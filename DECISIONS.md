@@ -95,7 +95,7 @@ rather than the framework default. Three rules make it feel built rather than ge
   overshoot carries a value *past* the truth and back, and in the two frames where someone is reading
   "₹5.5 Cr" they have been told something false. The KPI counters use an easeOutQuart that approaches from
   below and stops.
-- **Entrances stagger at 30ms and the whole run is capped at 240ms**, so a long list never turns its own
+- **Entrances stagger at 24ms and the whole run is capped at 144ms**, so a long list never turns its own
   arrival into a wait.
 
 Under `prefers-reduced-motion` the carve-out matters more than the off switch: **travel and layout are
