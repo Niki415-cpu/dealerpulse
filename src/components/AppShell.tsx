@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { RANGE_PRESETS } from "@/lib/data";
 import { formatDate } from "@/lib/format";
 import { useDashboard } from "./DashboardProvider";
@@ -25,10 +25,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="min-h-screen md:flex">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[248px] shrink-0 border-r border-line bg-surface transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[248px] shrink-0 border-r border-line bg-surface transition-transform md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button
           aria-label="Close navigation"
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-30 bg-black/20 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/20 md:hidden"
         />
       ) : null}
 
@@ -87,26 +87,156 @@ export function AppShell({ children }: { children: ReactNode }) {
 function TopBar({ onMenu }: { onMenu: () => void }) {
   const { dataset, status } = useDashboard();
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-surface/85 px-4 backdrop-blur sm:gap-3 sm:px-6">
       <button
         onClick={onMenu}
         aria-label="Open navigation"
-        className="-ml-1 rounded-lg p-1.5 text-ink-2 transition hover:bg-surface-2 lg:hidden"
+        className="-ml-1 rounded-lg p-1.5 text-ink-2 hover:bg-surface-2 md:hidden"
       >
         <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
         </svg>
       </button>
 
-      <div className="hidden items-center gap-2 text-xs text-ink-3 sm:flex">
-        <span className="flex h-1.5 w-1.5 rounded-full bg-[#0ca30c]" />
-        {status === "ready" && dataset ? `Data current to ${formatDate(dataset.asOf)}` : "Loading data…"}
-      </div>
+      <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-2">
+        <BranchFilter />
         <RangePicker />
+        <div className="hidden items-center gap-2 border-l border-line pl-3 xl:flex">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-white">
+            CEO
+          </span>
+          <div className="leading-tight">
+            <p className="text-[11px] font-semibold text-ink">Group CEO</p>
+            <p className="text-[10px] text-ink-3">
+              {status === "ready" && dataset ? `Data to ${formatDate(dataset.asOf)}` : "Loading…"}
+            </p>
+          </div>
+        </div>
       </div>
     </header>
+  );
+}
+
+/** Jump straight to a branch, a rep or a lead — the fastest path in the product. */
+function GlobalSearch() {
+  const { dataset } = useDashboard();
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const results = useMemo(() => {
+    if (!dataset || query.trim().length < 2) return [];
+    const q = query.trim().toLowerCase();
+    const hits: { id: string; label: string; meta: string; href: string; kind: string }[] = [];
+    for (const b of dataset.branches) {
+      if (`${b.name} ${b.city}`.toLowerCase().includes(q))
+        hits.push({ id: b.id, label: b.name, meta: b.city, href: `/branches/${b.id}`, kind: "Branch" });
+    }
+    for (const r of dataset.sales_reps) {
+      if (r.name.toLowerCase().includes(q))
+        hits.push({
+          id: r.id,
+          label: r.name,
+          meta: dataset.branchById.get(r.branch_id)?.name ?? "",
+          href: `/reps/${r.id}`,
+          kind: r.role === "branch_manager" ? "Manager" : "Rep",
+        });
+    }
+    for (const l of dataset.leads) {
+      if (hits.length > 10) break;
+      if (`${l.customer_name} ${l.model_interested}`.toLowerCase().includes(q))
+        hits.push({
+          id: l.id,
+          label: l.customer_name,
+          meta: `${l.model_interested} · ${dataset.branchById.get(l.branch_id)?.name ?? ""}`,
+          href: `/reps/${l.assigned_to}`,
+          kind: "Lead",
+        });
+    }
+    return hits.slice(0, 7);
+  }, [dataset, query]);
+
+  return (
+    <div className="relative hidden min-w-0 flex-1 sm:block sm:max-w-xs">
+      <svg
+        viewBox="0 0 20 20"
+        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+      >
+        <circle cx="9" cy="9" r="6" />
+        <path d="m17 17-3.5-3.5" strokeLinecap="round" />
+      </svg>
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        placeholder="Search branches, reps or customers"
+        aria-label="Search"
+        className="w-full rounded-lg border border-line bg-surface-2 py-1.5 pl-8 pr-3 text-[12px] text-ink placeholder:text-ink-3 focus:bg-surface"
+      />
+      {open && results.length ? (
+        <ul className="card rise absolute left-0 right-0 top-[calc(100%+6px)] z-30 max-h-80 overflow-auto p-1 shadow-lg">
+          {results.map((r) => (
+            <li key={`${r.kind}-${r.id}`}>
+              <button
+                onMouseDown={() => {
+                  router.push(r.href);
+                  setQuery("");
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left hover:bg-surface-2"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[12px] font-medium text-ink">{r.label}</span>
+                  <span className="block truncate text-[11px] text-ink-3">{r.meta}</span>
+                </span>
+                <span className="chip bg-surface-2 text-ink-3">{r.kind}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {open && query.trim().length >= 2 && !results.length ? (
+        <div className="card rise absolute left-0 right-0 top-[calc(100%+6px)] z-30 px-3 py-2.5 text-[12px] text-ink-3 shadow-lg">
+          Nothing matches “{query}”.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** One branch filter that every page respects, so drill-down survives navigation. */
+function BranchFilter() {
+  const { dataset, branchId, setBranchId, status } = useDashboard();
+  const pathname = usePathname();
+  // The branch pages are themselves a branch view — the global filter would fight them.
+  const disabled = status !== "ready" || pathname.startsWith("/branches") || pathname.startsWith("/reps");
+  return (
+    <select
+      value={branchId ?? ""}
+      disabled={disabled}
+      onChange={(e) => setBranchId(e.target.value || null)}
+      aria-label="Branch filter"
+      title={disabled ? "Already viewing a single branch" : "Filter every view to one branch"}
+      className={`hidden rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold md:block ${
+        branchId ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-surface text-ink-2"
+      } disabled:opacity-40`}
+    >
+      <option value="">All branches</option>
+      {dataset?.branches.map((b) => (
+        <option key={b.id} value={b.id}>
+          {b.name}
+        </option>
+      ))}
+    </select>
   );
 }
 

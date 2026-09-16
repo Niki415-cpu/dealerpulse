@@ -16,12 +16,12 @@ const TABS: { key: Severity | "all"; label: string }[] = [
 ];
 
 export default function ActionsPage() {
-  const { dataset, range, status, error, retry } = useDashboard();
+  const { dataset, range, status, error, retry, branchId } = useDashboard();
   const [tab, setTab] = useState<Severity | "all">("all");
 
   const actions = useMemo(
-    () => (dataset && range ? generateActions(dataset, { range }) : []),
-    [dataset, range],
+    () => (dataset && range ? generateActions(dataset, { range, branchId }) : []),
+    [dataset, range, branchId],
   );
 
   if (status === "error") return <ErrorState message={error ?? "Unknown error"} onRetry={retry} />;
@@ -42,11 +42,13 @@ export default function ActionsPage() {
     <>
       <PageHeader
         title="Action centre"
-        subtitle="Every rule below runs over the full status history of all 510 leads. Ranked by severity, then by the money behind it."
+        subtitle={`Every rule below runs over the full status history of ${
+          branchId ? dataset.branchById.get(branchId)?.name ?? "this branch" : "all 510 leads"
+        }. Ranked by severity, then by the money behind it.`}
         breadcrumb={[{ label: "Overview", href: "/" }]}
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="stagger mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="border-l-[3px] border-l-[#d03b3b]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Critical</p>
           <p className="tnum mt-1.5 text-[24px] font-semibold leading-none">
@@ -90,7 +92,7 @@ export default function ActionsPage() {
       </div>
 
       {visible.length ? (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="stagger grid gap-4 xl:grid-cols-2">
           {visible.map((a) => (
             <ActionCard key={a.id} action={a} dataset={dataset} />
           ))}

@@ -23,7 +23,7 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         {breadcrumb?.length ? (
           <nav className="mb-1.5 flex items-center gap-1.5 text-[11px] text-ink-3">
@@ -192,7 +192,7 @@ export function LeadTable({
             const idle = idleDays(l, asOf);
             const rep = dataset.repById.get(l.assigned_to);
             return (
-              <tr key={l.id} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+              <tr key={l.id} className="row-hover border-b border-line last:border-0">
                 <td className={`px-3 ${dense ? "py-2" : "py-2.5"}`}>
                   <span className="font-medium text-ink">{l.customer_name}</span>
                   <span className="ml-1.5 text-[11px] text-ink-3">{SOURCE_LABEL[l.source]}</span>
@@ -283,8 +283,12 @@ export function FunnelView({
               aria-label={`${STATUS_LABEL[s.stage]}: ${s.count} leads`}
             >
               <span
-                className="flex h-7 items-center rounded-md transition-[width] duration-500"
-                style={{ width: `${width}%`, background: shades[i] }}
+                className="flex h-7 items-center rounded-md"
+                style={{
+                  width: `${width}%`,
+                  background: shades[i],
+                  transition: "width var(--dur-slow) var(--ease-chart)",
+                }}
               />
             </button>
             {dropped > 0 ? (
@@ -331,7 +335,7 @@ export function TableCard({
 export function LoadingGrid() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-[104px]" />
         ))}

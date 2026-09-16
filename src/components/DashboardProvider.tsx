@@ -13,6 +13,9 @@ interface DashboardState {
   rangeKey: string;
   range: DateRange | null;
   setRangeKey: (key: string) => void;
+  /** Global branch filter. null = the whole group. */
+  branchId: string | null;
+  setBranchId: (id: string | null) => void;
   retry: () => void;
 }
 
@@ -25,6 +28,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
   const [rangeKey, setRangeKeyState] = useState<string>("90d");
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -75,9 +79,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       rangeKey,
       range,
       setRangeKey,
+      branchId,
+      setBranchId,
       retry: () => setAttempt((a) => a + 1),
     }),
-    [status, dataset, error, rangeKey, range, setRangeKey],
+    [status, dataset, error, rangeKey, range, setRangeKey, branchId],
   );
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

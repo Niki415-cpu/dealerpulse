@@ -5,9 +5,26 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { ExportButton, LeadTable, LoadingGrid, PageHeader, TableCard } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
 import { Card, CardHeader, EmptyState, ErrorState, KpiTile } from "@/components/ui";
-import { formatINR, formatNumber, STATUS_LABEL } from "@/lib/format";
+import { MeasuredAt } from "@/components/charts";
+import { formatDate, formatINR, formatNumber, STATUS_LABEL } from "@/lib/format";
 import { filterPipeline, PIPELINE_FILTERS, type PipelineFilter } from "@/lib/insights";
 import { ageingMatrix, idleDays, OPEN_STAGES, stageWinProbabilities } from "@/lib/metrics";
+
+/*
+  A magnitude scale with published cut points. "Darker means more" is not a scale —
+  the legend prints the real counts each step stands for, so a cell can be read
+  without hovering it.
+*/
+const HEAT_CUTS = [1, 2, 4, 7, 12];
+const HEAT_BANDS = ["1", "2-3", "4-6", "7-11", "12+"];
+const SAFE_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf"];
+const RISK_RAMP = ["#fbdcdc", "#f3b5b5", "#e88a8a", "#d95c5c", "#b92f2f"];
+
+function heatLevel(v: number): number {
+  let level = 0;
+  for (let i = 0; i < HEAT_CUTS.length; i++) if (v >= HEAT_CUTS[i]) level = i + 1;
+  return level;
+}
 
 export default function PipelinePage() {
   return (
@@ -19,9 +36,8 @@ export default function PipelinePage() {
 
 function PipelineView() {
   const searchParams = useSearchParams();
-  const { dataset, status, error, retry } = useDashboard();
+  const { dataset, status, error, retry, branchId, setBranchId } = useDashboard();
   const [filter, setFilter] = useState<PipelineFilter>("all");
-  const [branchId, setBranchId] = useState<string>("");
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -29,7 +45,7 @@ function PipelineView() {
     if (f && PIPELINE_FILTERS.some((p) => p.key === f)) setFilter(f);
     const b = searchParams.get("branch");
     if (b) setBranchId(b);
-  }, [searchParams]);
+  }, [searchParams, setBranchId]);
 
   const model = useMemo(() => {
     if (!dataset) return null;
@@ -94,16 +110,18 @@ function PipelineView() {
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiTile label="Open deals" value={formatNumber(allOpen.length)} sub="still in play" />
-        <KpiTile label="Pipeline value" value={formatINR(openValue)} sub="if every deal closed" />
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiTile icon="people" label="Open deals" value={formatNumber(allOpen.length)} sub="still in play" />
+        <KpiTile icon="revenue" label="Pipeline value" value={formatINR(openValue)} sub="if every deal closed" />
         <KpiTile
+          icon="pipeline"
           label="Weighted pipeline"
           value={formatINR(weighted)}
           sub="at historical win rates"
           hint="Each open deal is multiplied by the share of past leads that reached delivery from the same stage."
         />
         <KpiTile
+          icon="alert"
           label="Past follow-up SLA"
           value={formatNumber(counts.cold)}
           tone={counts.cold ? "bad" : "good"}
@@ -136,21 +154,15 @@ function PipelineView() {
                   <td className="py-2 pr-3 font-medium text-ink">{row.bucket}</td>
                   {OPEN_STAGES.map((s) => {
                     const v = Number(row[s] ?? 0);
-                    // Sequential ramp: one hue, light → dark with the count.
-                    const intensity = v === 0 ? 0 : Math.min(1, 0.25 + v / 12);
+                    const level = heatLevel(v);
                     const risky = i >= 3;
                     return (
                       <td key={s} className="px-1 py-1.5 text-center">
                         <span
                           className="tnum inline-flex h-8 w-full min-w-[40px] items-center justify-center rounded-md text-[12px] font-semibold"
                           style={{
-                            background:
-                              v === 0
-                                ? "var(--color-surface-2)"
-                                : risky
-                                  ? `rgba(208,59,59,${intensity})`
-                                  : `rgba(42,120,214,${intensity})`,
-                            color: v === 0 ? "var(--color-ink-3)" : intensity > 0.55 ? "#fff" : "var(--color-ink)",
+                            background: level === 0 ? "var(--color-surface-2)" : (risky ? RISK_RAMP : SAFE_RAMP)[level - 1],
+                            color: level === 0 ? "var(--color-ink-3)" : level >= 4 ? "#fff" : "var(--color-ink)",
                           }}
                         >
                           {v || "—"}
@@ -165,10 +177,24 @@ function PipelineView() {
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-[11px] text-ink-3">
-          Blue = inside the normal follow-up window. Red = 15 days or more without contact, which is where deals stop
-          coming back.
-        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Deals per cell</span>
+          <ul className="flex flex-wrap items-center gap-3">
+            {HEAT_BANDS.map((band, i) => (
+              <li key={band} className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                <span className="h-3 w-5 rounded-[3px]" style={{ background: SAFE_RAMP[i] }} aria-hidden />
+                {band}
+              </li>
+            ))}
+          </ul>
+          <span className="flex items-center gap-1.5 text-[11px] text-ink-2">
+            <span className="h-3 w-5 rounded-[3px] bg-[#d95c5c]" aria-hidden />
+            red = 15+ days without contact
+          </span>
+        </div>
+        <MeasuredAt>
+          Idle time measured against {formatDate(dataset.asOf)}, the last event in the dataset.
+        </MeasuredAt>
       </Card>
 
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -191,18 +217,6 @@ function PipelineView() {
         </div>
 
         <div className="flex gap-2">
-          <select
-            value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink-2"
-          >
-            <option value="">All branches</option>
-            {dataset.branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

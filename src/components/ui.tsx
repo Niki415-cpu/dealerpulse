@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Severity } from "@/lib/insights";
+import { useCountUp } from "./useCountUp";
 
 /* --------------------------------------------------------------------- card */
 
@@ -106,14 +107,19 @@ export function Pill({
 export function KpiTile({
   label,
   value,
+  format,
   sub,
   delta,
   tone = "neutral",
   hint,
   href,
+  icon,
 }: {
+  icon?: keyof typeof KPI_ICONS;
   label: string;
-  value: string;
+  /** A ready-made string, or a raw number plus `format` to have it count up. */
+  value: string | number;
+  format?: (n: number) => string;
   sub?: string;
   delta?: { value: number; suffix?: string; invert?: boolean };
   tone?: "neutral" | "good" | "bad" | "warn";
@@ -123,7 +129,19 @@ export function KpiTile({
   const body = (
     <div className="flex h-full flex-col justify-between gap-3">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">{label}</p>
+        <div className="flex items-center gap-2">
+          {icon ? (
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                tone === "bad" ? "bg-[#fdecec] text-[#a32626]" : "bg-brand-tint text-brand-dark"
+              }`}
+              aria-hidden
+            >
+              {KPI_ICONS[icon]}
+            </span>
+          ) : null}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">{label}</p>
+        </div>
         {hint ? <InfoDot hint={hint} /> : null}
       </div>
       <div>
@@ -132,7 +150,7 @@ export function KpiTile({
             tone === "bad" ? "text-[#a32626]" : tone === "good" ? "text-[#0a6b0a]" : "text-ink"
           }`}
         >
-          {value}
+          {typeof value === "number" && format ? <CountingValue value={value} format={format} /> : value}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {delta ? <DeltaBadge {...delta} /> : null}
@@ -142,12 +160,69 @@ export function KpiTile({
     </div>
   );
   return href ? (
-    <Link href={href} className="card block p-4 transition hover:border-line-strong hover:shadow-sm">
+    <Link href={href} className="card card-interactive block p-4">
       {body}
     </Link>
   ) : (
     <div className="card p-4">{body}</div>
   );
+}
+
+/** A small, flat icon set — one per KPI concept, never decorative. */
+export const KPI_ICONS = {
+  revenue: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M4 3h8M4 6h8M10.5 3c0 2.5-1.6 3.6-4 3.6h-.8L11 13" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  car: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2.5 10.5v-2l1.3-3a1.5 1.5 0 0 1 1.4-1h5.6a1.5 1.5 0 0 1 1.4 1l1.3 3v2" strokeLinejoin="round" />
+      <path d="M2.5 10.5h11v1.5a.5.5 0 0 1-.5.5h-1.5a.5.5 0 0 1-.5-.5v-.5h-6v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-1.5Z" strokeLinejoin="round" />
+    </svg>
+  ),
+  target: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="8" cy="8" r="5.5" />
+      <circle cx="8" cy="8" r="2.5" />
+      <path d="M8 2.5v-1M8 14.5v-1M2.5 8h-1M14.5 8h-1" strokeLinecap="round" />
+    </svg>
+  ),
+  pipeline: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M2 3.5h12l-4.5 5V13L6.5 11V8.5L2 3.5Z" strokeLinejoin="round" />
+    </svg>
+  ),
+  alert: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M8 2.5 14.5 13.5h-13L8 2.5Z" strokeLinejoin="round" />
+      <path d="M8 6.8v2.6M8 11.6h.01" strokeLinecap="round" />
+    </svg>
+  ),
+  clock: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M8 4.8V8l2.2 1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  truck: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M1.8 5.2A1.2 1.2 0 0 1 3 4h5.6a1.2 1.2 0 0 1 1.2 1.2v5.3H1.8V5.2ZM9.8 6.6h2.4l2 2.3v1.6h-4.4V6.6Z" strokeLinejoin="round" />
+      <circle cx="5" cy="11.8" r="1.2" />
+      <circle cx="11.6" cy="11.8" r="1.2" />
+    </svg>
+  ),
+  people: (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="6.2" cy="5.6" r="2.4" />
+      <path d="M1.8 13c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11 3.6a2.3 2.3 0 0 1 0 4.4M12.2 9.6c1.3.5 2 1.7 2 3.4" strokeLinecap="round" />
+    </svg>
+  ),
+} as const;
+
+function CountingValue({ value, format }: { value: number; format: (n: number) => string }) {
+  const animated = useCountUp(value);
+  return <>{format(animated)}</>;
 }
 
 export function DeltaBadge({
@@ -204,7 +279,10 @@ export function ProgressBar({
   const pct = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
   return (
     <div className={`h-1.5 w-full overflow-hidden rounded-full ${showTrack ? "bg-surface-3" : ""}`}>
-      <div className={`h-full rounded-full ${colors[tone]} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
+      <div
+        className={`h-full rounded-full ${colors[tone]}`}
+        style={{ width: `${pct}%`, transition: "width var(--dur-slow) var(--ease-chart)" }}
+      />
     </div>
   );
 }

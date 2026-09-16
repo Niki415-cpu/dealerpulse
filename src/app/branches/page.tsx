@@ -57,14 +57,14 @@ export default function BranchesPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="stagger mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[...branches]
           .sort((a, b) => b.revenue - a.revenue)
           .map((b) => (
             <Link
               key={b.id}
               href={`/branches/${b.id}`}
-              className="card block p-4 transition hover:border-line-strong hover:shadow-sm"
+              className="card card-interactive block p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -168,7 +168,7 @@ export default function BranchesPage() {
             </thead>
             <tbody>
               {sorted.map((b) => (
-                <tr key={b.id} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+                <tr key={b.id} className="row-hover border-b border-line last:border-0">
                   <td className="px-4 py-3">
                     <Link href={`/branches/${b.id}`} className="font-semibold text-ink hover:text-brand-dark">
                       {b.name}

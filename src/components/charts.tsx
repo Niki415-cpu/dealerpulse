@@ -18,6 +18,52 @@ import type { MonthPoint } from "@/lib/metrics";
 const AXIS = { fontSize: 11, fill: "#8a8a86" };
 const GRID = "#e3e7ed";
 
+/* ------------------------------------------------------------------- legend */
+
+export interface LegendRow {
+  color: string;
+  label: string;
+  /** A legend without the number is a colour key, not a legend. */
+  value?: string;
+  /** Rendered as a dashed rule instead of a swatch, for reference lines. */
+  dashed?: boolean;
+}
+
+/**
+ * Swatch, label, value — in that order, outside the plot, never floating over it.
+ * Every series on a chart has a row here, so a series cannot ship unexplained.
+ */
+export function Legend({ rows, className = "" }: { rows: LegendRow[]; className?: string }) {
+  return (
+    <ul className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 ${className}`}>
+      {rows.map((r) => (
+        <li key={r.label} className="flex items-baseline gap-1.5 text-[11px]">
+          {r.dashed ? (
+            <span className="h-0.5 w-3 shrink-0 self-center rounded" style={{ background: r.color }} aria-hidden />
+          ) : (
+            <span className="h-2 w-2 shrink-0 self-center rounded-[2px]" style={{ background: r.color }} aria-hidden />
+          )}
+          <span className="text-ink-2">{r.label}</span>
+          {r.value ? <span className="tnum font-semibold text-ink">{r.value}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** "Measured against …" — one line, always present on a measurement surface. */
+export function MeasuredAt({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-3">
+      <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="8" cy="8" r="5.8" />
+        <path d="M8 4.8V8l2.2 1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {children}
+    </p>
+  );
+}
+
 /* ------------------------------------------------------------------ tooltip */
 
 interface TipRow {
@@ -81,8 +127,10 @@ export function RevenueVsTargetChart({ data }: { data: MonthPoint[] }) {
             );
           }}
         />
-        <Bar dataKey="revenue" name="Delivered revenue" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={38} />
+        <Bar animationDuration={520} animationEasing="ease-out" dataKey="revenue" name="Delivered revenue" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={38} />
         <Line
+          animationDuration={520}
+          animationEasing="ease-out"
           type="monotone"
           dataKey="targetRevenue"
           name="Target"
@@ -122,9 +170,9 @@ export function LeadFlowChart({ data }: { data: MonthPoint[] }) {
             );
           }}
         />
-        <Bar dataKey="leadsCreated" name="New enquiries" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={18} />
-        <Bar dataKey="units" name="Delivered" fill="#1baf7a" radius={[4, 4, 0, 0]} maxBarSize={18} />
-        <Bar dataKey="lost" name="Lost" fill="#eb6834" radius={[4, 4, 0, 0]} maxBarSize={18} />
+        <Bar animationDuration={520} animationEasing="ease-out" dataKey="leadsCreated" name="New enquiries" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={18} />
+        <Bar animationDuration={520} animationEasing="ease-out" dataKey="units" name="Delivered" fill="#1baf7a" radius={[4, 4, 0, 0]} maxBarSize={18} />
+        <Bar animationDuration={520} animationEasing="ease-out" dataKey="lost" name="Lost" fill="#eb6834" radius={[4, 4, 0, 0]} maxBarSize={18} />
       </ComposedChart>
     </ResponsiveContainer>
   );
@@ -166,6 +214,8 @@ export function HorizontalBars({
           }}
         />
         <Bar
+          animationDuration={520}
+          animationEasing="ease-out"
           dataKey="value"
           radius={[0, 4, 4, 0]}
           maxBarSize={22}
@@ -221,7 +271,7 @@ export function HistogramChart({ data, unitLabel }: { data: HistogramBin[]; unit
             return <TipCard title={`${label} ${unitLabel}`} rows={[{ label: "Deliveries", value: formatNumber(p.count) }]} />;
           }}
         />
-        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={44}>
+        <Bar animationDuration={520} animationEasing="ease-out" dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={44}>
           {data.map((d) => (
             <Cell key={d.label} fill={d.risky ? "#d03b3b" : "#2a78d6"} />
           ))}

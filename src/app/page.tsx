@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { BriefCard, ExportButton, FunnelView, LoadingGrid, PageHeader, TableCard } from "@/components/blocks";
 import { ActionCard } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
-import { LeadFlowChart, RevenueVsTargetChart } from "@/components/charts";
+import { LeadFlowChart, Legend, RevenueVsTargetChart } from "@/components/charts";
 import { attainmentTone, Card, CardHeader, ErrorState, KpiTile, Pill, ProgressBar, SeverityIcon } from "@/components/ui";
 import { formatINR, formatMonth, formatNumber, formatPct } from "@/lib/format";
 import { executiveBrief, generateActions } from "@/lib/insights";
@@ -16,17 +16,18 @@ import {
   forecastCurrentMonth,
   monthlySeries,
   previousRange,
+  repPerformance,
   scopeLeads,
 } from "@/lib/metrics";
 
 export default function OverviewPage() {
-  const { dataset, range, status, error, retry } = useDashboard();
+  const { dataset, range, status, error, retry, branchId } = useDashboard();
 
   const model = useMemo(() => {
     if (!dataset || !range) return null;
-    const scope = { range };
+    const scope = { range, branchId };
     const kpis = computeKpis(dataset, scope);
-    const prev = computeKpis(dataset, { range: previousRange(range) });
+    const prev = computeKpis(dataset, { range: previousRange(range), branchId });
     const actions = generateActions(dataset, scope);
     return {
       kpis,
@@ -35,10 +36,13 @@ export default function OverviewPage() {
       brief: executiveBrief(dataset, scope, actions),
       series: monthlySeries(dataset, scope),
       funnel: computeFunnel(scopeLeads(dataset, scope).created),
-      branches: branchPerformance(dataset, range).sort((a, b) => b.revenue - a.revenue),
-      forecast: forecastCurrentMonth(dataset),
+      // With a branch selected the scoreboard becomes that branch's reps.
+      rows: branchId
+        ? repPerformance(dataset, range, branchId).sort((a, b) => b.revenue - a.revenue)
+        : branchPerformance(dataset, range).sort((a, b) => b.revenue - a.revenue),
+      forecast: forecastCurrentMonth(dataset, branchId),
     };
-  }, [dataset, range]);
+  }, [dataset, range, branchId]);
 
   if (status === "error") return <ErrorState message={error ?? "Unknown error"} onRetry={retry} />;
   if (!model || !dataset || !range)
@@ -49,7 +53,8 @@ export default function OverviewPage() {
       </>
     );
 
-  const { kpis, prev, actions, brief, series, funnel, branches, forecast } = model;
+  const { kpis, prev, actions, brief, series, funnel, rows, forecast } = model;
+  const branch = branchId ? dataset.branchById.get(branchId) : null;
   const revenueDelta = prev.revenue ? ((kpis.revenue - prev.revenue) / prev.revenue) * 100 : NaN;
   const closed = kpis.units + kpis.lostCount;
   const prevClosed = prev.units + prev.lostCount;
@@ -61,14 +66,16 @@ export default function OverviewPage() {
   return (
     <>
       <PageHeader
-        title="Group overview"
-        subtitle={`${range.label} · 5 branches · ${formatNumber(kpis.leadsCreated)} new enquiries in period`}
+        title={branch ? `${branch.name} overview` : "Group overview"}
+        subtitle={`${range.label} · ${branch ? branch.city : "5 branches"} · ${formatNumber(
+          kpis.leadsCreated,
+        )} new enquiries in period`}
         action={
           <ExportButton
-            filename={`dealerpulse-branches-${range.key}`}
-            rows={branches.map((b) => ({
-              branch: b.name,
-              city: b.subtitle,
+            filename={`dealerpulse-${branch ? "reps" : "branches"}-${range.key}`}
+            rows={rows.map((b) => ({
+              name: b.name,
+              detail: b.subtitle,
               units: b.units,
               revenue: Math.round(b.revenue),
               target_units: Math.round(b.targetUnits),
@@ -99,39 +106,49 @@ export default function OverviewPage() {
         ) : null}
 
         {/* Vital signs */}
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <div className="stagger grid grid-cols-2 gap-4 xl:grid-cols-5">
           <KpiTile
+            icon="revenue"
             label="Delivered revenue"
-            value={formatINR(kpis.revenue)}
+            value={kpis.revenue}
+            format={(n) => formatINR(n)}
             delta={Number.isFinite(revenueDelta) ? { value: revenueDelta } : undefined}
             sub="vs previous period"
             hint="Sum of deal value for leads that reached 'delivered' inside the selected range."
           />
           <KpiTile
+            icon="car"
             label="Units delivered"
-            value={formatNumber(kpis.units)}
+            value={kpis.units}
+            format={(n) => formatNumber(Math.round(n))}
             sub={`of ${formatNumber(Math.round(kpis.targetUnits))} target`}
             tone={kpis.unitAttainment < 50 ? "bad" : "neutral"}
             hint="Monthly branch targets, prorated to the selected range."
           />
           <KpiTile
+            icon="target"
             label="Win rate"
-            value={formatPct(winRate, 1)}
+            value={winRate}
+            format={(n) => formatPct(n, 1)}
             delta={Number.isFinite(winDelta) ? { value: winDelta, suffix: "pp" } : undefined}
             tone={winRate < 40 ? "bad" : "neutral"}
             sub={`${formatNumber(kpis.units + kpis.lostCount)} deals closed`}
             hint="Of the deals that reached a decision in this period, the share that ended in a delivery. Measured on closing date, so it is not distorted by how young the current lead cohort is."
           />
           <KpiTile
+            icon="pipeline"
             label="Open pipeline"
-            value={formatINR(kpis.openValue)}
+            value={kpis.openValue}
+            format={(n) => formatINR(n)}
             sub={`${formatNumber(kpis.openCount)} live deals`}
             href="/pipeline"
             hint="Live snapshot of every lead still in play — not limited by the date range."
           />
           <KpiTile
+            icon="alert"
             label="Needs a decision"
-            value={formatNumber(criticalCount)}
+            value={criticalCount}
+            format={(n) => formatNumber(Math.round(n))}
             tone={criticalCount ? "bad" : "good"}
             sub={`${formatNumber(kpis.staleCount)} leads past follow-up SLA`}
             href="/actions"
@@ -146,14 +163,12 @@ export default function OverviewPage() {
               title="Delivered revenue against target"
               subtitle="Monthly, whole group. Dashed line is the combined branch target."
               action={
-                <div className="flex items-center gap-3 text-[11px] text-ink-2">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-[2px] bg-series-1" /> Delivered
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-0.5 w-3 rounded bg-ink-3" /> Target
-                  </span>
-                </div>
+                <Legend
+                  rows={[
+                    { color: "#2a78d6", label: "Delivered", value: formatINR(kpis.revenue) },
+                    { color: "#8a8a86", label: "Target", value: formatINR(kpis.targetRevenue), dashed: true },
+                  ]}
+                />
               }
             />
             <RevenueVsTargetChart data={series} />
@@ -178,13 +193,20 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Branch leaderboard */}
+        {/* Scoreboard — branches at group level, reps once a branch is selected */}
         <TableCard
-          title="Branch scoreboard"
-          subtitle="Click through to any branch for rep-level detail."
+          title={branch ? `${branch.name} · rep scoreboard` : "Branch scoreboard"}
+          subtitle={
+            branch
+              ? "Every officer at this branch, ranked by delivered revenue."
+              : "Click through to any branch for rep-level detail."
+          }
           action={
-            <Link href="/branches" className="text-[11px] font-semibold text-brand-dark hover:underline">
-              Compare branches →
+            <Link
+              href={branch ? `/branches/${branch.id}` : "/branches"}
+              className="text-[11px] font-semibold text-brand-dark hover:underline"
+            >
+              {branch ? "Open branch view" : "Compare branches"} →
             </Link>
           }
         >
@@ -192,32 +214,39 @@ export default function OverviewPage() {
             <table className="w-full min-w-[720px] border-collapse text-[13px]">
               <thead>
                 <tr className="border-y border-line bg-surface-2 text-left text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                  <th className="px-4 py-2 font-semibold">Branch</th>
+                  <th className="px-4 py-2 font-semibold">{branch ? "Rep" : "Branch"}</th>
                   <th className="px-4 py-2 text-right font-semibold">Revenue</th>
                   <th className="px-4 py-2 text-right font-semibold">Units</th>
-                  <th className="px-4 py-2 font-semibold">Target attainment</th>
+                  <th className="px-4 py-2 font-semibold">{branch ? "Leads handled" : "Target attainment"}</th>
                   <th className="px-4 py-2 text-right font-semibold">Conversion</th>
                   <th className="px-4 py-2 text-right font-semibold">Needs follow-up</th>
                 </tr>
               </thead>
               <tbody>
-                {branches.map((b) => (
-                  <tr key={b.id} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+                {rows.map((b) => (
+                  <tr key={b.id} className="row-hover border-b border-line last:border-0">
                     <td className="px-4 py-3">
-                      <Link href={`/branches/${b.id}`} className="font-semibold text-ink hover:text-brand-dark">
+                      <Link
+                        href={branch ? `/reps/${b.id}` : `/branches/${b.id}`}
+                        className="font-semibold text-ink hover:text-brand-dark"
+                      >
                         {b.name}
                       </Link>
-                      <p className="text-[11px] text-ink-3">{b.subtitle}</p>
+                      <p className="text-[11px] text-ink-3">{branch ? b.subtitle.split(" · ")[0] : b.subtitle}</p>
                     </td>
                     <td className="tnum px-4 py-3 text-right font-medium">{formatINR(b.revenue)}</td>
                     <td className="tnum px-4 py-3 text-right text-ink-2">{formatNumber(b.units)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-24">
-                          <ProgressBar value={b.unitAttainment} tone={attainmentTone(b.unitAttainment)} />
+                      {branch ? (
+                        <span className="tnum text-[12px] text-ink-2">{formatNumber(b.leadsCreated)}</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="w-24">
+                            <ProgressBar value={b.unitAttainment} tone={attainmentTone(b.unitAttainment)} />
+                          </div>
+                          <span className="tnum text-[12px] text-ink-2">{formatPct(b.unitAttainment)}</span>
                         </div>
-                        <span className="tnum text-[12px] text-ink-2">{formatPct(b.unitAttainment)}</span>
-                      </div>
+                      )}
                     </td>
                     <td className="tnum px-4 py-3 text-right">
                       <span className={b.conversion < 10 ? "font-semibold text-[#a32626]" : "text-ink-2"}>
@@ -257,17 +286,14 @@ export default function OverviewPage() {
             <Card>
               <CardHeader title="Enquiries, deliveries and losses" subtitle="Monthly counts across the group." />
               <LeadFlowChart data={series} />
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-ink-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-[2px] bg-series-1" /> New enquiries
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-[2px] bg-series-3" /> Delivered
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-[2px] bg-series-2" /> Lost
-                </span>
-              </div>
+              <Legend
+                className="mt-3"
+                rows={[
+                  { color: "#2a78d6", label: "New enquiries", value: formatNumber(kpis.leadsCreated) },
+                  { color: "#1baf7a", label: "Delivered", value: formatNumber(kpis.units) },
+                  { color: "#eb6834", label: "Lost", value: formatNumber(kpis.lostCount) },
+                ]}
+              />
             </Card>
 
             <Card>

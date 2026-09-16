@@ -8,14 +8,13 @@ import { formatINR, formatNumber, formatPct, SOURCE_LABEL, STATUS_LABEL } from "
 import { breakdownBy, cohortMaturity, computeFunnel, FUNNEL_STAGES, scopeLeads } from "@/lib/metrics";
 
 export default function FunnelPage() {
-  const { dataset, range, status, error, retry } = useDashboard();
-  const [branchId, setBranchId] = useState("");
+  const { dataset, range, status, error, retry, branchId } = useDashboard();
   const [stageIndex, setStageIndex] = useState(3); // negotiation by default
   const [uplift, setUplift] = useState(10);
 
   const model = useMemo(() => {
     if (!dataset || !range) return null;
-    const { created, lost } = scopeLeads(dataset, { range, branchId: branchId || null });
+    const { created, lost } = scopeLeads(dataset, { range, branchId });
     const funnel = computeFunnel(created);
     const delivered = created.filter((l) => l.status === "delivered");
     const avgDeal = delivered.length ? delivered.reduce((s, l) => s + l.deal_value, 0) / delivered.length : 0;
@@ -67,18 +66,6 @@ export default function FunnelPage() {
         breadcrumb={[{ label: "Overview", href: "/" }]}
         action={
           <div className="flex items-center gap-2">
-            <select
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value)}
-              className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink-2"
-            >
-              <option value="">All branches</option>
-              {dataset.branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
             <ExportButton
               filename="dealerpulse-funnel"
               rows={funnel.map((s) => ({
@@ -104,20 +91,23 @@ export default function FunnelPage() {
         </div>
       ) : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiTile label="Leads in cohort" value={formatNumber(created.length)} sub={range.label} />
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiTile icon="people" label="Leads in cohort" value={formatNumber(created.length)} sub={range.label} />
         <KpiTile
+          icon="car"
           label="Reached delivery"
           value={formatNumber(baseline)}
           sub={`${formatPct(funnel[0].count ? (baseline / funnel[0].count) * 100 : 0, 1)} of all leads`}
         />
         <KpiTile
+          icon="pipeline"
           label="Weakest step"
           value={formatPct(worstStep.stepConversion)}
           sub={`into ${STATUS_LABEL[worstStep.stage].toLowerCase()}`}
           tone="bad"
         />
         <KpiTile
+          icon="alert"
           label="Costliest stage to lose at"
           value={formatINR(costliestStage.lostValue)}
           sub={`${costliestStage.lostHere} deals at ${STATUS_LABEL[costliestStage.stage].toLowerCase()}`}
@@ -253,7 +243,7 @@ function BreakdownTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.key} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+            <tr key={r.key} className="row-hover border-b border-line last:border-0">
               <td className="px-4 py-2.5 text-ink">
                 {r.label}
                 {best && r.conversion === bestConversion && r.leads >= 20 ? (

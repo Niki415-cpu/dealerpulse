@@ -85,10 +85,40 @@ always paired with an icon or a text label, so no meaning is carried by colour a
 encodings (the ageing heatmap, the funnel) are single-hue light→dark ramps. There is no dual-axis
 chart anywhere in the product.
 
+**Motion is a scale, not a set of one-off animations.** Four durations (120 / 220 / 400ms, and 160ms for
+anything leaving) and four curves live in `globals.css` as tokens; every transition in the product points
+at one of them, including Tailwind's own `transition` utility, which is re-pointed at the product easing
+rather than the framework default. Three rules make it feel built rather than generated:
+
+- **Leaving is faster than arriving.** Exit runs at 160ms against a 220ms entrance.
+- **No overshoot on anything that displays a number.** Elastic, back and bounce curves are banned outright:
+  overshoot carries a value *past* the truth and back, and in the two frames where someone is reading
+  "₹5.5 Cr" they have been told something false. The KPI counters use an easeOutQuart that approaches from
+  below and stops.
+- **Entrances stagger at 30ms and the whole run is capped at 240ms**, so a long list never turns its own
+  arrival into a wait.
+
+Under `prefers-reduced-motion` the carve-out matters more than the off switch: **travel and layout are
+killed, opacity and colour are kept**, because a red total going red is information, not decoration. The
+skeletons stop breathing and render as flat blocks — still skeletons, just not animated.
+
+**Charts follow one grammar.** Every legend is swatch → label → **value**, sits outside the plot, and is
+built from the same numbers the chart is (a legend without the number is a colour key, not a legend). The
+pipeline ageing heatmap uses a magnitude scale with **published cut points** — the legend prints "1 / 2-3 /
+4-6 / 7-11 / 12+" rather than asking the reader to infer that darker means more — and carries a
+"measured against 31 Dec 2025" provenance line, because a measurement without its as-of date is a claim.
+
+**One filter bar, not per-page filters.** The branch selector lives in the top bar and every view respects
+it, so drilling into Highway Toyota survives navigating from the overview to the pipeline to delivery. The
+two pages that *are* a single branch — the branch and rep pages — disable it rather than fighting it. A
+global search jumps straight to any branch, rep or customer.
+
 **Scope I consciously cut.** No authentication (the brief says skip it). No dark mode — a committed
 single theme executed well beats two themes executed at 70%. No date-picker calendar; five presets
 cover the real questions and are one click instead of six. No map view; with five branches in four
-cities it would be decoration.
+cities it would be decoration. No scroll-linked or 3D animation: that language belongs to marketing
+sites, and on a screen a manager opens every morning it reads as noise. No donut chart for lead status —
+seven categories in a ring is a legend-reading exercise; the funnel already answers that question better.
 
 ---
 

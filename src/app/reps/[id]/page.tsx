@@ -5,7 +5,7 @@ import { notFound, useParams } from "next/navigation";
 import { useMemo } from "react";
 import { FunnelView, LeadTable, LoadingGrid, PageHeader, TableCard } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
-import { LeadFlowChart } from "@/components/charts";
+import { LeadFlowChart, Legend } from "@/components/charts";
 import { attainmentTone, Avatar, Card, CardHeader, EmptyState, ErrorState, KpiTile, Pill, ProgressBar } from "@/components/ui";
 import { formatDate, formatDuration, formatINR, formatNumber, formatPct, STATUS_LABEL } from "@/lib/format";
 import { computeFunnel, idleDays, median, monthlySeries, repPerformance, scopeLeads } from "@/lib/metrics";
@@ -80,22 +80,25 @@ export default function RepPage() {
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <KpiTile label="Revenue delivered" value={formatINR(me.revenue)} sub={`${me.units} units`} />
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <KpiTile icon="revenue" label="Revenue delivered" value={formatINR(me.revenue)} sub={`${me.units} units`} />
         <KpiTile
+          icon="target"
           label="Conversion"
           value={formatPct(me.conversion, 1)}
           sub={`branch median ${formatPct(branchMedian, 1)}`}
           tone={behind ? "bad" : me.conversion > branchMedian ? "good" : "neutral"}
         />
-        <KpiTile label="Leads handled" value={formatNumber(me.leadsCreated)} sub="created in period" />
+        <KpiTile icon="people" label="Leads handled" value={formatNumber(me.leadsCreated)} sub="created in period" />
         <KpiTile
+          icon="clock"
           label="First response"
           value={formatDuration(me.medianResponseHours)}
           sub="median"
           tone={me.medianResponseHours > 48 ? "bad" : "neutral"}
         />
         <KpiTile
+          icon="pipeline"
           label="Open pipeline"
           value={formatINR(me.openValue)}
           sub={`${me.openCount} deals · ${me.staleCount} stale`}
@@ -136,17 +139,14 @@ export default function RepPage() {
         <Card>
           <CardHeader title="Monthly activity" subtitle="Enquiries received, delivered and lost." />
           <LeadFlowChart data={series} />
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-ink-2">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-[2px] bg-series-1" /> New
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-[2px] bg-series-3" /> Delivered
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-[2px] bg-series-2" /> Lost
-            </span>
-          </div>
+          <Legend
+            className="mt-3"
+            rows={[
+              { color: "#2a78d6", label: "New", value: formatNumber(me.leadsCreated) },
+              { color: "#1baf7a", label: "Delivered", value: formatNumber(me.units) },
+              { color: "#eb6834", label: "Lost", value: formatNumber(me.lostCount) },
+            ]}
+          />
         </Card>
       </div>
 

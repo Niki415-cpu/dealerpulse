@@ -12,11 +12,12 @@ import { deliveredAt, idleDays, isOpen, scopeLeads } from "@/lib/metrics";
 const SLA_DAYS = 21;
 
 export default function DeliveryPage() {
-  const { dataset, range, status, error, retry } = useDashboard();
+  const { dataset, range, status, error, retry, branchId } = useDashboard();
 
   const model = useMemo(() => {
     if (!dataset || !range) return null;
-    const { delivered } = scopeLeads(dataset, { range });
+    const { delivered } = scopeLeads(dataset, { range, branchId });
+    const allDelivered = branchId ? scopeLeads(dataset, { range }).delivered : delivered;
     const records = delivered
       .map((l) => ({ lead: l, delivery: dataset.deliveryByLeadId.get(l.id) }))
       .filter((r): r is { lead: typeof r.lead; delivery: NonNullable<typeof r.delivery> } => Boolean(r.delivery));
@@ -42,20 +43,25 @@ export default function DeliveryPage() {
       reasons.set(r.delivery.delay_reason, (reasons.get(r.delivery.delay_reason) ?? 0) + 1);
     }
 
+    // The branch comparison stays group-wide even when one branch is selected —
+    // that is the whole point of a comparison.
     const byBranch = dataset.branches.map((b) => {
-      const rows = records.filter((r) => r.lead.branch_id === b.id);
+      const rows = allDelivered
+        .map((l) => ({ lead: l, delivery: dataset.deliveryByLeadId.get(l.id) }))
+        .filter((r): r is { lead: typeof r.lead; delivery: NonNullable<typeof r.delivery> } => Boolean(r.delivery))
+        .filter((r) => r.lead.branch_id === b.id);
       const avg = rows.length ? rows.reduce((s, r) => s + r.delivery.days_to_deliver, 0) / rows.length : 0;
       return {
         id: b.id,
         label: b.name.replace(" Toyota", ""),
         value: Number(avg.toFixed(1)),
-        highlight: avg > SLA_DAYS,
+        highlight: branchId ? b.id === branchId : avg > SLA_DAYS,
         count: rows.length,
       };
     });
 
     const stuck = dataset.leads
-      .filter((l) => isOpen(l) && l.status === "order_placed")
+      .filter((l) => isOpen(l) && l.status === "order_placed" && (!branchId || l.branch_id === branchId))
       .sort((a, b) => idleDays(b, dataset.asOf) - idleDays(a, dataset.asOf));
 
     return {
@@ -67,7 +73,7 @@ export default function DeliveryPage() {
       byBranch,
       stuck,
     };
-  }, [dataset, range]);
+  }, [dataset, range, branchId]);
 
   if (status === "error") return <ErrorState message={error ?? "Unknown error"} onRetry={retry} />;
   if (!dataset || !range || !model)
@@ -106,16 +112,18 @@ export default function DeliveryPage() {
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiTile label="Deliveries in period" value={formatNumber(records.length)} sub={range.label} />
-        <KpiTile label="Average time to deliver" value={`${avgDays.toFixed(1)} days`} sub={`${SLA_DAYS}-day internal SLA`} />
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <KpiTile icon="truck" label="Deliveries in period" value={formatNumber(records.length)} sub={range.label} />
+        <KpiTile icon="clock" label="Average time to deliver" value={`${avgDays.toFixed(1)} days`} sub={`${SLA_DAYS}-day internal SLA`} />
         <KpiTile
+          icon="target"
           label="Delivered on time"
           value={formatPct(onTimeRate)}
           tone={onTimeRate < 75 ? "bad" : "good"}
           sub={`${late.length} past SLA`}
         />
         <KpiTile
+          icon="alert"
           label="Booked but undelivered"
           value={formatINR(stuckValue)}
           tone={stuck.length ? "bad" : "good"}
@@ -229,7 +237,7 @@ export default function DeliveryPage() {
             </thead>
             <tbody>
               {records.slice(0, 15).map((r) => (
-                <tr key={r.lead.id} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+                <tr key={r.lead.id} className="row-hover border-b border-line last:border-0">
                   <td className="px-4 py-2.5 font-medium text-ink">{r.lead.customer_name}</td>
                   <td className="px-4 py-2.5 text-ink-2">{r.lead.model_interested}</td>
                   <td className="px-4 py-2.5">

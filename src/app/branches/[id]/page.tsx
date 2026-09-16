@@ -14,7 +14,7 @@ import {
   useSorted,
 } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
-import { RevenueVsTargetChart } from "@/components/charts";
+import { Legend, RevenueVsTargetChart } from "@/components/charts";
 import { attainmentTone, Avatar, Card, CardHeader, ErrorState, KpiTile, Pill, ProgressBar } from "@/components/ui";
 import { formatDuration, formatINR, formatMonth, formatNumber, formatPct, SOURCE_LABEL } from "@/lib/format";
 import { generateActions } from "@/lib/insights";
@@ -108,27 +108,31 @@ export default function BranchPage() {
         </div>
       ) : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <KpiTile label="Delivered revenue" value={formatINR(kpis.revenue)} sub={`${formatNumber(kpis.units)} units`} />
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <KpiTile icon="revenue" label="Delivered revenue" value={formatINR(kpis.revenue)} sub={`${formatNumber(kpis.units)} units`} />
         <KpiTile
+          icon="target"
           label="Target attainment"
           value={formatPct(kpis.unitAttainment)}
           sub={`target ${formatNumber(Math.round(kpis.targetUnits))} units`}
           tone={kpis.unitAttainment < 50 ? "bad" : "neutral"}
         />
         <KpiTile
+          icon="pipeline"
           label="Lead → delivery"
           value={formatPct(kpis.cohortConversion, 1)}
           sub={`group median ${formatPct(groupMedian, 1)}`}
           tone={behind ? "bad" : "neutral"}
         />
         <KpiTile
+          icon="clock"
           label="First response"
           value={formatDuration(kpis.medianResponseHours)}
           sub="median, this period"
           tone={kpis.medianResponseHours > 48 ? "bad" : "neutral"}
         />
         <KpiTile
+          icon="people"
           label="Open pipeline"
           value={formatINR(kpis.openValue)}
           sub={`${kpis.openCount} deals · ${kpis.staleCount} stale`}
@@ -137,7 +141,7 @@ export default function BranchPage() {
       </div>
 
       {actions.length ? (
-        <div className="mb-4 grid gap-3 xl:grid-cols-2">
+        <div className="stagger mb-6 grid gap-4 xl:grid-cols-2">
           {actions.map((a) => (
             <ActionCard key={a.id} action={a} dataset={dataset} />
           ))}
@@ -152,14 +156,12 @@ export default function BranchPage() {
               forecast.projectedAttainment,
             )} of target.`}
             action={
-              <div className="flex items-center gap-3 text-[11px] text-ink-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-[2px] bg-series-1" /> Delivered
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-0.5 w-3 rounded bg-ink-3" /> Target
-                </span>
-              </div>
+              <Legend
+                rows={[
+                  { color: "#2a78d6", label: "Delivered", value: formatINR(kpis.revenue) },
+                  { color: "#8a8a86", label: "Target", value: formatINR(kpis.targetRevenue), dashed: true },
+                ]}
+              />
             }
           />
           <RevenueVsTargetChart data={series} />
@@ -188,7 +190,7 @@ export default function BranchPage() {
               </thead>
               <tbody>
                 {sorted.map((r) => (
-                  <tr key={r.id} className="border-b border-line last:border-0 hover:bg-surface-2/60">
+                  <tr key={r.id} className="row-hover border-b border-line last:border-0">
                     <td className="px-4 py-3">
                       <Link href={`/reps/${r.id}`} className="flex items-center gap-2.5">
                         <Avatar name={r.name} />
