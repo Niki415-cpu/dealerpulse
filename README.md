@@ -1,5 +1,7 @@
 # DealerPulse
 
+**Live: [dealerpulse-one.vercel.app](https://dealerpulse-one.vercel.app)**
+
 A performance dashboard for a five-branch automotive dealership group, built for the Forward Deployed
 Engineer take-home. It turns `dealership_data.json` (510 leads, 30 reps, 7 months of status history)
 into a set of decisions a CEO and their branch managers can act on.
@@ -21,7 +23,8 @@ npm run build && npm start   # production build
 
 ## Deploy to Vercel
 
-The app is a standard Next.js project with no environment variables and no backend services.
+Already deployed at **https://dealerpulse-one.vercel.app**. The app is a standard Next.js project with no environment
+variables and no backend services, so a fresh deploy needs no configuration either.
 
 ```bash
 npx vercel --prod

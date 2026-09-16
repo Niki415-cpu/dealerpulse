@@ -3,6 +3,9 @@
 DealerPulse — a performance dashboard for a five-branch Toyota dealership group, built against
 `dealership_data.json` (510 leads, 30 reps, Jun–Dec 2025).
 
+**Live: https://dealerpulse-one.vercel.app**
+**Source: https://github.com/Niki415-cpu/dealerpulse**
+
 ---
 
 ## 1. What I chose to build, and why
