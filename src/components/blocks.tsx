@@ -26,7 +26,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         {breadcrumb?.length ? (
-          <nav className="mb-1.5 flex items-center gap-1.5 text-[11px] text-ink-3">
+          <nav className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-3">
             {breadcrumb.map((b, i) => (
               <span key={b.href} className="flex items-center gap-1.5">
                 {i > 0 ? <span>/</span> : null}
@@ -37,8 +37,8 @@ export function PageHeader({
             ))}
           </nav>
         ) : null}
-        <h1 className="text-xl font-bold tracking-[-0.02em] text-ink sm:text-2xl">{title}</h1>
-        {subtitle ? <p className="mt-1 max-w-2xl text-[13px] text-ink-2">{subtitle}</p> : null}
+        <h1>{title}</h1>
+        {subtitle ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-2">{subtitle}</p> : null}
       </div>
       {action}
     </div>
@@ -82,14 +82,14 @@ export function ActionCard({ action, dataset }: { action: Action; dataset: Datas
   }[action.severity];
 
   return (
-    <article className={`card rise border-l-[3px] ${accent} p-4`}>
+    <article className={`card rise border-l-[3px] ${accent} p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <SeverityBadge severity={action.severity} />
           <span className="text-[11px] font-medium text-ink-3">{action.category}</span>
         </div>
         <div className="text-right">
-          <p className="tnum text-sm font-bold text-ink">
+          <p className="tnum text-[15px] font-bold tracking-[-0.02em] text-ink">
             {action.impactLabel.toLowerCase().includes("revenue") ||
             action.impactLabel.toLowerCase().includes("value") ||
             action.impactLabel.toLowerCase().includes("gap")
@@ -100,8 +100,8 @@ export function ActionCard({ action, dataset }: { action: Action; dataset: Datas
         </div>
       </div>
 
-      <h3 className="mt-2.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-ink">{action.title}</h3>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">{action.detail}</p>
+      <h3 className="mt-3 text-[16px] font-semibold leading-snug tracking-[-0.018em] text-ink">{action.title}</h3>
+      <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{action.detail}</p>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg bg-surface-2 px-3 py-2">
         <svg viewBox="0 0 16 16" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-3" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -175,16 +175,16 @@ export function LeadTable({
   const asOf = dataset.asOf;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-[13px]">
+      <table className="w-full min-w-[640px] border-collapse text-[13.5px]">
         <thead>
-          <tr className="border-b border-line bg-surface-2 text-left text-[11px] uppercase tracking-[0.05em] text-ink-3">
-            <th className="px-3 py-2 font-semibold">Customer</th>
-            <th className="px-3 py-2 font-semibold">Model</th>
-            <th className="px-3 py-2 font-semibold">Stage</th>
-            {showBranch ? <th className="px-3 py-2 font-semibold">Branch</th> : null}
-            <th className="px-3 py-2 font-semibold">Owner</th>
-            <th className="px-3 py-2 text-right font-semibold">Value</th>
-            <th className="px-3 py-2 text-right font-semibold">Idle</th>
+          <tr className="border-b border-line text-left">
+            <th className="th !px-3">Customer</th>
+            <th className="th !px-3">Model</th>
+            <th className="th !px-3">Stage</th>
+            {showBranch ? <th className="th !px-3">Branch</th> : null}
+            <th className="th !px-3">Owner</th>
+            <th className="th !px-3 text-right">Value</th>
+            <th className="th !px-3 text-right">Idle</th>
           </tr>
         </thead>
         <tbody>
@@ -193,7 +193,7 @@ export function LeadTable({
             const rep = dataset.repById.get(l.assigned_to);
             return (
               <tr key={l.id} className="row-hover border-b border-line last:border-0">
-                <td className={`px-3 ${dense ? "py-2" : "py-2.5"}`}>
+                <td className={`px-3 ${dense ? "py-2.5" : "py-3"}`}>
                   <span className="font-medium text-ink">{l.customer_name}</span>
                   <span className="ml-1.5 text-[11px] text-ink-3">{SOURCE_LABEL[l.source]}</span>
                 </td>
@@ -324,7 +324,7 @@ export function TableCard({
 }) {
   return (
     <Card padded={false}>
-      <div className="p-4 sm:p-5">
+      <div className="p-5 sm:p-6">
         <CardHeader title={title} subtitle={subtitle} action={action} />
       </div>
       <div className="-mt-2">{children}</div>
@@ -417,7 +417,7 @@ export function SortHeader<T>({
   align?: "left" | "right";
 }) {
   return (
-    <th className={`px-3 py-2 font-semibold ${align === "right" ? "text-right" : "text-left"}`}>
+    <th className={`th !px-3 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         onClick={() => onClick(sortKey)}
         className={`inline-flex items-center gap-1 uppercase tracking-[0.05em] transition hover:text-ink ${

@@ -28,16 +28,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen md:flex">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[248px] shrink-0 border-r border-line bg-surface transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[252px] shrink-0 flex-col bg-shell transition-transform md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-14 items-center gap-2 border-b border-line px-5">
+        <div className="flex h-[68px] items-center gap-2.5 px-5">
           <Logo />
-          <span className="text-[15px] font-bold tracking-[-0.02em]">DealerPulse</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-bold tracking-[-0.025em] text-shell-ink">DealerPulse</span>
+            <span className="mt-1 text-[10px] font-medium tracking-[0.04em] text-shell-ink-2">
+              DEALERSHIP PERFORMANCE
+            </span>
+          </span>
         </div>
 
-        <nav className="flex flex-col gap-0.5 p-3">
+        <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
           {NAV.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -45,10 +50,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition ${
-                  active ? "bg-brand-tint text-brand-dark" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                className={`group relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium ${
+                  active
+                    ? "bg-shell-2 text-white"
+                    : "text-shell-ink-2 hover:bg-shell-2/60 hover:text-shell-ink"
                 }`}
               >
+                {active ? (
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand" />
+                ) : null}
                 <Icon active={active} />
                 {item.label}
                 {item.badge ? <CriticalCount /> : null}
@@ -57,9 +67,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-line p-4">
-          <p className="text-[11px] font-semibold text-ink-2">Toyota dealership group</p>
-          <p className="mt-0.5 text-[11px] text-ink-3">5 branches · 30 reps · Jun–Dec 2025</p>
+        <div className="m-3 rounded-[10px] bg-shell-2 p-3.5">
+          <p className="text-[11px] font-semibold text-shell-ink">Toyota dealership group</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-shell-ink-2">
+            5 branches · 30 reps
+            <br />
+            Jun – Dec 2025
+          </p>
         </div>
       </aside>
 
@@ -74,8 +88,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onMenu={() => setOpen(true)} />
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 sm:px-6 sm:py-6">{children}</main>
-        <footer className="border-t border-line px-4 py-4 text-[11px] text-ink-3 sm:px-6">
+        <main className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-6 sm:px-7 sm:py-7">{children}</main>
+        <footer className="border-t border-line px-4 py-5 text-[11px] text-ink-3 sm:px-7">
           DealerPulse · built for the DealerPulse take-home · all figures from{" "}
           <code className="rounded bg-surface-2 px-1 py-0.5">dealership_data.json</code>
         </footer>
@@ -87,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function TopBar({ onMenu }: { onMenu: () => void }) {
   const { dataset, status } = useDashboard();
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-surface/85 px-4 backdrop-blur sm:gap-3 sm:px-6">
+    <header className="sticky top-0 z-20 flex h-[68px] items-center gap-2 border-b border-line bg-surface/80 px-4 backdrop-blur-xl sm:gap-3 sm:px-7">
       <button
         onClick={onMenu}
         aria-label="Open navigation"
@@ -286,8 +300,8 @@ function CriticalCount() {
 
 function Logo() {
   return (
-    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink">
-      <svg viewBox="0 0 20 20" className="h-4 w-4 text-white" fill="none" stroke="currentColor" strokeWidth="1.9">
+    <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#3b8ae8] to-[#1c5cab] shadow-[0_4px_12px_-4px_rgba(42,120,214,0.7)]">
+      <svg viewBox="0 0 20 20" className="h-[18px] w-[18px] text-white" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M2 12h3l2-6 3 12 3-9 2 3h3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>

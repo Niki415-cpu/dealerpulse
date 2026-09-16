@@ -336,7 +336,7 @@ export function generateActions(ds: Dataset, scope: Scope): Action[] {
 export function executiveBrief(ds: Dataset, scope: Scope, actions: Action[]): string[] {
   const { created, delivered } = scopeLeads(ds, scope);
   const revenue = delivered.reduce((s, l) => s + l.deal_value, 0);
-  const funnel = computeFunnel(created);
+  const funnel = computeFunnel(ds, created);
   const worstStep = funnel
     .slice(1)
     .reduce((worst, s) => (s.stepConversion < worst.stepConversion ? s : worst), funnel[1]);
@@ -382,19 +382,20 @@ export function executiveBrief(ds: Dataset, scope: Scope, actions: Action[]): st
 
 export type PipelineFilter = "all" | "stuck" | "uncontacted" | "cold" | "hot";
 
-export function filterPipeline(leads: Lead[], filter: PipelineFilter, asOf: Date): Lead[] {
+export function filterPipeline(ds: Dataset, leads: Lead[], filter: PipelineFilter): Lead[] {
+  const asOf = ds.asOf.getTime();
+  const idle = (l: Lead) => (asOf - ds.leadIndex.get(l.id)!.activity) / 86_400_000;
+  const age = (l: Lead) => (asOf - ds.leadIndex.get(l.id)!.created) / 86_400_000;
   const openLeads = leads.filter(isOpen);
   switch (filter) {
     case "stuck":
-      return openLeads.filter((l) => l.status === "order_placed" && idleDays(l, asOf) >= 30);
+      return openLeads.filter((l) => l.status === "order_placed" && idle(l) >= 30);
     case "uncontacted":
-      return openLeads.filter((l) => l.status === "new" && ageDays(l, asOf) >= 2);
+      return openLeads.filter((l) => l.status === "new" && age(l) >= 2);
     case "cold":
-      return openLeads.filter((l) => idleDays(l, asOf) >= (STALE_SLA_DAYS[l.status] ?? 14));
+      return openLeads.filter((l) => idle(l) >= (STALE_SLA_DAYS[l.status] ?? 14));
     case "hot":
-      return openLeads.filter(
-        (l) => ["negotiation", "order_placed"].includes(l.status) && idleDays(l, asOf) < 7,
-      );
+      return openLeads.filter((l) => ["negotiation", "order_placed"].includes(l.status) && idle(l) < 7);
     default:
       return openLeads;
   }

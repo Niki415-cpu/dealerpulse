@@ -76,8 +76,28 @@ export interface DealershipData {
   deliveries: Delivery[];
 }
 
+/**
+ * Everything about one lead that the aggregations ask for repeatedly, resolved once
+ * at load time. Date parsing and status-history scanning are the two hot paths in the
+ * whole product, and neither of them changes after the JSON lands.
+ */
+export interface LeadIndex {
+  created: number;
+  activity: number;
+  delivered: number | null;
+  lost: number | null;
+  /** Still in play. Taken from the lead's status, not inferred from its history. */
+  open: boolean;
+  /** Every stage this lead ever entered. */
+  reached: Set<LeadStatus>;
+  /** The stage it was in when it was marked lost, if it was. */
+  lostFrom: LeadStatus | null;
+  responseHours: number | null;
+}
+
 /** Everything the UI needs, indexed for O(1) lookups. */
 export interface Dataset extends DealershipData {
+  leadIndex: Map<string, LeadIndex>;
   branchById: Map<string, Branch>;
   repById: Map<string, SalesRep>;
   leadById: Map<string, Lead>;

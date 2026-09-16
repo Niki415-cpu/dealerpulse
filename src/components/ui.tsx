@@ -16,7 +16,7 @@ export function Card({
   className?: string;
   padded?: boolean;
 }) {
-  return <section className={`card ${padded ? "p-4 sm:p-5" : ""} ${className}`}>{children}</section>;
+  return <section className={`card ${padded ? "p-5 sm:p-6" : ""} ${className}`}>{children}</section>;
 }
 
 export function CardHeader({
@@ -29,10 +29,10 @@ export function CardHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="mb-4 flex items-start justify-between gap-3">
+    <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p> : null}
+        <h2>{title}</h2>
+        {subtitle ? <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-ink-3">{subtitle}</p> : null}
       </div>
       {action}
     </header>
@@ -127,12 +127,12 @@ export function KpiTile({
   href?: string;
 }) {
   const body = (
-    <div className="flex h-full flex-col justify-between gap-3">
+    <div className="flex h-full flex-col justify-between gap-5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {icon ? (
             <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] ${
                 tone === "bad" ? "bg-[#fdecec] text-[#a32626]" : "bg-brand-tint text-brand-dark"
               }`}
               aria-hidden
@@ -140,19 +140,19 @@ export function KpiTile({
               {KPI_ICONS[icon]}
             </span>
           ) : null}
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">{label}</p>
+          <p className="eyebrow">{label}</p>
         </div>
         {hint ? <InfoDot hint={hint} /> : null}
       </div>
       <div>
         <p
-          className={`tnum text-[26px] font-semibold leading-none tracking-[-0.02em] ${
+          className={`figure ${
             tone === "bad" ? "text-[#a32626]" : tone === "good" ? "text-[#0a6b0a]" : "text-ink"
           }`}
         >
           {typeof value === "number" && format ? <CountingValue value={value} format={format} /> : value}
         </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {delta ? <DeltaBadge {...delta} /> : null}
           {sub ? <span className="text-xs text-ink-3">{sub}</span> : null}
         </div>
@@ -160,60 +160,60 @@ export function KpiTile({
     </div>
   );
   return href ? (
-    <Link href={href} className="card card-interactive block p-4">
+    <Link href={href} className="card card-interactive block p-5">
       {body}
     </Link>
   ) : (
-    <div className="card p-4">{body}</div>
+    <div className="card p-5">{body}</div>
   );
 }
 
 /** A small, flat icon set — one per KPI concept, never decorative. */
 export const KPI_ICONS = {
   revenue: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
       <path d="M4 3h8M4 6h8M10.5 3c0 2.5-1.6 3.6-4 3.6h-.8L11 13" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   car: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M2.5 10.5v-2l1.3-3a1.5 1.5 0 0 1 1.4-1h5.6a1.5 1.5 0 0 1 1.4 1l1.3 3v2" strokeLinejoin="round" />
       <path d="M2.5 10.5h11v1.5a.5.5 0 0 1-.5.5h-1.5a.5.5 0 0 1-.5-.5v-.5h-6v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5v-1.5Z" strokeLinejoin="round" />
     </svg>
   ),
   target: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="8" cy="8" r="5.5" />
       <circle cx="8" cy="8" r="2.5" />
       <path d="M8 2.5v-1M8 14.5v-1M2.5 8h-1M14.5 8h-1" strokeLinecap="round" />
     </svg>
   ),
   pipeline: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M2 3.5h12l-4.5 5V13L6.5 11V8.5L2 3.5Z" strokeLinejoin="round" />
     </svg>
   ),
   alert: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
       <path d="M8 2.5 14.5 13.5h-13L8 2.5Z" strokeLinejoin="round" />
       <path d="M8 6.8v2.6M8 11.6h.01" strokeLinecap="round" />
     </svg>
   ),
   clock: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="8" cy="8" r="5.8" />
       <path d="M8 4.8V8l2.2 1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
   truck: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M1.8 5.2A1.2 1.2 0 0 1 3 4h5.6a1.2 1.2 0 0 1 1.2 1.2v5.3H1.8V5.2ZM9.8 6.6h2.4l2 2.3v1.6h-4.4V6.6Z" strokeLinejoin="round" />
       <circle cx="5" cy="11.8" r="1.2" />
       <circle cx="11.6" cy="11.8" r="1.2" />
     </svg>
   ),
   people: (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="6.2" cy="5.6" r="2.4" />
       <path d="M1.8 13c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4M11 3.6a2.3 2.3 0 0 1 0 4.4M12.2 9.6c1.3.5 2 1.7 2 3.4" strokeLinecap="round" />
     </svg>
@@ -345,7 +345,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
 export function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }) {
   return (
     <div className="mb-3 flex items-center gap-2">
-      <h2 className="text-[13px] font-semibold uppercase tracking-[0.07em] text-ink-3">{children}</h2>
+      <h2 className="eyebrow">{children}</h2>
       {hint ? <InfoDot hint={hint} /> : null}
     </div>
   );

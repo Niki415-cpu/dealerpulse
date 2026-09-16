@@ -1,4 +1,4 @@
-import type { DateRange, DealershipData, Dataset, SalesRep } from "./types";
+import type { DateRange, DealershipData, Dataset, LeadIndex, LeadStatus, SalesRep } from "./types";
 
 /**
  * The dataset ends on 31 Dec 2025. Every "days since" number in the product is
@@ -18,16 +18,55 @@ export function buildDataset(raw: DealershipData): Dataset {
     repsByBranch.set(rep.branch_id, list);
   }
 
+  // One pass over the leads resolves every timestamp and stage set the aggregations
+  // will ask for, so no metric ever parses a date or walks a status history again.
+  const leadIndex = new Map<string, LeadIndex>();
   let latest = 0;
   for (const lead of raw.leads) {
-    const t = new Date(lead.last_activity_at).getTime();
-    if (t > latest) latest = t;
+    const created = new Date(lead.created_at).getTime();
+    const activity = new Date(lead.last_activity_at).getTime();
+    if (activity > latest) latest = activity;
+
+    const reached = new Set<LeadStatus>();
+    let delivered: number | null = null;
+    let lost: number | null = null;
+    let lostFrom: LeadStatus | null = null;
+    let contacted: number | null = null;
+
+    for (const event of lead.status_history) {
+      reached.add(event.status);
+      if (event.status === "delivered") delivered = new Date(event.timestamp).getTime();
+      else if (event.status === "lost") lost = new Date(event.timestamp).getTime();
+      else {
+        lostFrom = event.status;
+        if (event.status === "contacted" && contacted === null) contacted = new Date(event.timestamp).getTime();
+      }
+    }
+
+    // The lead's own `status` is authoritative for whether it is closed; the history
+    // is authoritative for when. 14 leads in this export are marked lost with no
+    // "lost" event on their history, so their last activity stands in as the closing
+    // date — dropping them instead would quietly understate every loss figure.
+    const isDelivered = lead.status === "delivered";
+    const isLost = lead.status === "lost";
+
+    leadIndex.set(lead.id, {
+      created,
+      activity,
+      delivered: isDelivered ? (delivered ?? activity) : null,
+      lost: isLost ? (lost ?? activity) : null,
+      open: !isDelivered && !isLost,
+      reached,
+      lostFrom: isLost ? lostFrom : null,
+      responseHours: contacted === null ? null : (contacted - created) / 3_600_000,
+    });
   }
 
   const months = [...new Set(raw.targets.map((t) => t.month))].sort();
 
   return {
     ...raw,
+    leadIndex,
     branchById,
     repById,
     leadById,

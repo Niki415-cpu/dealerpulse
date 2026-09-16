@@ -152,10 +152,10 @@ export default function BranchesPage() {
 
       <TableCard title="Full comparison" subtitle="Click a column header to sort.">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-[13px]">
+          <table className="w-full min-w-[860px] border-collapse text-[13.5px]">
             <thead>
-              <tr className="border-y border-line bg-surface-2 text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                <th className="px-4 py-2 text-left font-semibold">Branch</th>
+              <tr className="border-y border-line">
+                <th className="th text-left">Branch</th>
                 <SortHeader<EntityPerformance> label="Revenue" sortKey="revenue" active={sortKey === "revenue"} dir={dir} onClick={toggle} align="right" />
                 <SortHeader<EntityPerformance> label="Units" sortKey="units" active={sortKey === "units"} dir={dir} onClick={toggle} align="right" />
                 <SortHeader<EntityPerformance> label="Attainment" sortKey="unitAttainment" active={sortKey === "unitAttainment"} dir={dir} onClick={toggle} align="right" />
@@ -169,24 +169,24 @@ export default function BranchesPage() {
             <tbody>
               {sorted.map((b) => (
                 <tr key={b.id} className="row-hover border-b border-line last:border-0">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <Link href={`/branches/${b.id}`} className="font-semibold text-ink hover:text-brand-dark">
                       {b.name}
                     </Link>
                     <p className="text-[11px] text-ink-3">{b.subtitle}</p>
                   </td>
-                  <td className="tnum px-3 py-3 text-right font-medium">{formatINR(b.revenue)}</td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{formatNumber(b.units)}</td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{formatPct(b.unitAttainment)}</td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{formatNumber(b.leadsCreated)}</td>
-                  <td className="tnum px-3 py-3 text-right">
+                  <td className="tnum px-3 py-3.5 text-right font-medium">{formatINR(b.revenue)}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatNumber(b.units)}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatPct(b.unitAttainment)}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatNumber(b.leadsCreated)}</td>
+                  <td className="tnum px-3 py-3.5 text-right">
                     <span className={b.conversion < medianConversion * 0.6 ? "font-semibold text-[#a32626]" : "text-ink-2"}>
                       {formatPct(b.conversion, 1)}
                     </span>
                   </td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{formatDuration(b.medianResponseHours)}</td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{formatINR(b.openValue)}</td>
-                  <td className="tnum px-3 py-3 text-right text-ink-2">{b.staleCount}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatDuration(b.medianResponseHours)}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatINR(b.openValue)}</td>
+                  <td className="tnum px-3 py-3.5 text-right text-ink-2">{b.staleCount}</td>
                 </tr>
               ))}
             </tbody>

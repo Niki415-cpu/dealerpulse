@@ -33,7 +33,7 @@ export default function RepPage() {
       me,
       peers: [...peers].sort((a, b) => b.conversion - a.conversion),
       branchMedian,
-      funnel: computeFunnel(created),
+      funnel: computeFunnel(dataset, created),
       series: monthlySeries(dataset, scope),
       open: [...open].sort((a, b) => idleDays(b, dataset.asOf) - idleDays(a, dataset.asOf)),
       recent,
@@ -80,7 +80,7 @@ export default function RepPage() {
         }
       />
 
-      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-5">
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <KpiTile icon="revenue" label="Revenue delivered" value={formatINR(me.revenue)} sub={`${me.units} units`} />
         <KpiTile
           icon="target"

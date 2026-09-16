@@ -1,4 +1,37 @@
-import type { Branch, DateRange, Dataset, Lead, LeadStatus, SalesRep } from "./types";
+import type { Branch, DateRange, Dataset, Lead, LeadIndex, LeadStatus, SalesRep } from "./types";
+
+/* ------------------------------------------------------------------- caching */
+
+/**
+ * Every aggregation here is a pure function of (dataset, scope), and a single page
+ * asks for the same scope several times over — the action rules alone want the branch
+ * and rep leaderboards three times. Results are cached per dataset so the second ask
+ * is free, and the cache dies with the dataset because it hangs off a WeakMap.
+ *
+ * Cached values are shared: callers must copy before sorting in place.
+ */
+const CACHE = new WeakMap<Dataset, Map<string, unknown>>();
+
+export function memo<T>(ds: Dataset, key: string, compute: () => T): T {
+  let store = CACHE.get(ds);
+  if (!store) {
+    store = new Map();
+    CACHE.set(ds, store);
+  }
+  if (store.has(key)) return store.get(key) as T;
+  const value = compute();
+  store.set(key, value);
+  return value;
+}
+
+export function scopeKey(scope: Scope): string {
+  return `${scope.range.from.getTime()}|${scope.range.to.getTime()}|${scope.branchId ?? ""}|${scope.repId ?? ""}`;
+}
+
+/** The pre-resolved timestamps and stage set for one lead. */
+export function indexOf(ds: Dataset, lead: Lead): LeadIndex {
+  return ds.leadIndex.get(lead.id)!;
+}
 
 export const FUNNEL_STAGES: LeadStatus[] = [
   "new",
@@ -93,18 +126,25 @@ export interface ScopedLeads {
 }
 
 export function scopeLeads(ds: Dataset, scope: Scope): ScopedLeads {
-  const created: Lead[] = [];
-  const delivered: Lead[] = [];
-  const lost: Lead[] = [];
-  const open: Lead[] = [];
-  for (const lead of ds.leads) {
-    if (!matchesEntity(lead, scope)) continue;
-    if (inRange(new Date(lead.created_at), scope.range)) created.push(lead);
-    if (inRange(deliveredAt(lead), scope.range)) delivered.push(lead);
-    if (inRange(lostAt(lead), scope.range)) lost.push(lead);
-    if (isOpen(lead)) open.push(lead);
-  }
-  return { created, delivered, lost, open };
+  return memo(ds, `scope:${scopeKey(scope)}`, () => {
+    const from = scope.range.from.getTime();
+    const to = scope.range.to.getTime();
+    const within = (t: number | null) => t !== null && t >= from && t <= to;
+
+    const created: Lead[] = [];
+    const delivered: Lead[] = [];
+    const lost: Lead[] = [];
+    const open: Lead[] = [];
+    for (const lead of ds.leads) {
+      if (!matchesEntity(lead, scope)) continue;
+      const ix = ds.leadIndex.get(lead.id)!;
+      if (within(ix.created)) created.push(lead);
+      if (within(ix.delivered)) delivered.push(lead);
+      if (within(ix.lost)) lost.push(lead);
+      if (ix.open) open.push(lead);
+    }
+    return { created, delivered, lost, open };
+  });
 }
 
 /* ------------------------------------------------------------------- targets */
@@ -139,6 +179,24 @@ export function targetsInRange(
     revenue += t.target_revenue * share;
   }
   return { units, revenue };
+}
+
+/** Median first-response time, straight off the index. */
+function medianResponse(ds: Dataset, leads: Lead[]): number {
+  const hours: number[] = [];
+  for (const lead of leads) {
+    const h = ds.leadIndex.get(lead.id)!.responseHours;
+    if (h !== null) hours.push(h);
+  }
+  return median(hours);
+}
+
+/** Open leads sitting untouched for a fortnight or more. */
+function countStale(ds: Dataset, open: Lead[]): number {
+  const cutoff = ds.asOf.getTime() - 14 * 86_400_000;
+  let n = 0;
+  for (const lead of open) if (ds.leadIndex.get(lead.id)!.activity <= cutoff) n += 1;
+  return n;
 }
 
 /* ---------------------------------------------------------------------- KPIs */
@@ -176,6 +234,10 @@ export function cohortMaturity(created: Lead[]): number {
 }
 
 export function computeKpis(ds: Dataset, scope: Scope, probs?: Map<LeadStatus, number>): Kpis {
+  return memo(ds, `kpis:${scopeKey(scope)}`, () => computeKpisUncached(ds, scope, probs));
+}
+
+function computeKpisUncached(ds: Dataset, scope: Scope, probs?: Map<LeadStatus, number>): Kpis {
   const { created, delivered, lost, open } = scopeLeads(ds, scope);
   const revenue = delivered.reduce((s, l) => s + l.deal_value, 0);
   const target = targetsInRange(ds, scope.range, scope.branchId);
@@ -200,9 +262,9 @@ export function computeKpis(ds: Dataset, scope: Scope, probs?: Map<LeadStatus, n
     weightedPipeline: open.reduce((s, l) => s + l.deal_value * (p.get(l.status) ?? 0), 0),
     lostCount: lost.length,
     lostValue: lost.reduce((s, l) => s + l.deal_value, 0),
-    medianResponseHours: median(created.map(responseHours).filter((h): h is number => h !== null)),
+    medianResponseHours: medianResponse(ds, created),
     avgDaysToDeliver: deliverDays.length ? deliverDays.reduce((a, b) => a + b, 0) / deliverDays.length : NaN,
-    staleCount: open.filter((l) => idleDays(l, ds.asOf) >= 14).length,
+    staleCount: countStale(ds, open),
     cohortMaturity: cohortMaturity(created),
   };
 }
@@ -230,17 +292,31 @@ export interface FunnelStage {
   lostValue: number;
 }
 
-export function computeFunnel(leads: Lead[]): FunnelStage[] {
+export function computeFunnel(ds: Dataset, leads: Lead[]): FunnelStage[] {
+  const counts = new Map<LeadStatus, number>();
+  const lostHere = new Map<LeadStatus, number>();
+  const lostValue = new Map<LeadStatus, number>();
+
+  for (const lead of leads) {
+    const ix = ds.leadIndex.get(lead.id)!;
+    for (const stage of FUNNEL_STAGES) {
+      if (ix.reached.has(stage)) counts.set(stage, (counts.get(stage) ?? 0) + 1);
+    }
+    if (ix.lostFrom) {
+      lostHere.set(ix.lostFrom, (lostHere.get(ix.lostFrom) ?? 0) + 1);
+      lostValue.set(ix.lostFrom, (lostValue.get(ix.lostFrom) ?? 0) + lead.deal_value);
+    }
+  }
+
   return FUNNEL_STAGES.map((stage, i) => {
-    const count = leads.filter((l) => reachedStage(l, stage)).length;
-    const prev = i === 0 ? count : leads.filter((l) => reachedStage(l, FUNNEL_STAGES[i - 1])).length;
-    const lostLeads = leads.filter((l) => l.status === "lost" && lostFromStage(l) === stage);
+    const count = counts.get(stage) ?? 0;
+    const prev = i === 0 ? count : (counts.get(FUNNEL_STAGES[i - 1]) ?? 0);
     return {
       stage,
       count,
       stepConversion: prev ? (count / prev) * 100 : 0,
-      lostHere: lostLeads.length,
-      lostValue: lostLeads.reduce((s, l) => s + l.deal_value, 0),
+      lostHere: lostHere.get(stage) ?? 0,
+      lostValue: lostValue.get(stage) ?? 0,
     };
   });
 }
@@ -250,15 +326,26 @@ export function computeFunnel(leads: Lead[]): FunnelStage[] {
  * Used to weight the open pipeline instead of inventing probabilities.
  */
 export function stageWinProbabilities(ds: Dataset): Map<LeadStatus, number> {
-  const probs = new Map<LeadStatus, number>();
-  const closed = ds.leads.filter((l) => !isOpen(l));
-  for (const stage of OPEN_STAGES) {
-    const reached = closed.filter((l) => reachedStage(l, stage));
-    const won = reached.filter((l) => l.status === "delivered").length;
-    probs.set(stage, reached.length ? won / reached.length : 0);
-  }
-  probs.set("delivered", 1);
-  return probs;
+  return memo(ds, "winProbabilities", () => {
+    const reached = new Map<LeadStatus, number>();
+    const won = new Map<LeadStatus, number>();
+    for (const lead of ds.leads) {
+      const ix = ds.leadIndex.get(lead.id)!;
+      if (ix.open) continue;
+      for (const stage of OPEN_STAGES) {
+        if (!ix.reached.has(stage)) continue;
+        reached.set(stage, (reached.get(stage) ?? 0) + 1);
+        if (ix.delivered !== null) won.set(stage, (won.get(stage) ?? 0) + 1);
+      }
+    }
+    const probs = new Map<LeadStatus, number>();
+    for (const stage of OPEN_STAGES) {
+      const n = reached.get(stage) ?? 0;
+      probs.set(stage, n ? (won.get(stage) ?? 0) / n : 0);
+    }
+    probs.set("delivered", 1);
+    return probs;
+  });
 }
 
 /* ------------------------------------------------------------- time series */
@@ -275,6 +362,10 @@ export interface MonthPoint {
 }
 
 export function monthlySeries(ds: Dataset, scope: Scope): MonthPoint[] {
+  return memo(ds, `series:${scopeKey(scope)}`, () => monthlySeriesUncached(ds, scope));
+}
+
+function monthlySeriesUncached(ds: Dataset, scope: Scope): MonthPoint[] {
   const byMonth = new Map<string, MonthPoint>();
   const months = ds.months.filter((m) => {
     const { start, end } = monthBounds(m);
@@ -344,7 +435,8 @@ export interface EntityPerformance {
 }
 
 export function branchPerformance(ds: Dataset, range: DateRange): EntityPerformance[] {
-  return ds.branches.map((b: Branch) => {
+  return memo(ds, `branches:${range.from.getTime()}|${range.to.getTime()}`, () =>
+    ds.branches.map((b: Branch) => {
     const scope: Scope = { range, branchId: b.id };
     const k = computeKpis(ds, scope);
     return {
@@ -362,36 +454,40 @@ export function branchPerformance(ds: Dataset, range: DateRange): EntityPerforma
       openValue: k.openValue,
       staleCount: k.staleCount,
       medianResponseHours: k.medianResponseHours,
-      lostCount: k.lostCount,
-    };
-  });
+        lostCount: k.lostCount,
+      };
+    }),
+  );
 }
 
 export function repPerformance(ds: Dataset, range: DateRange, branchId?: string | null): EntityPerformance[] {
-  const reps = ds.sales_reps.filter((r: SalesRep) => !branchId || r.branch_id === branchId);
-  return reps.map((r) => {
-    const { created, delivered, lost, open } = scopeLeads(ds, { range, repId: r.id });
-    const won = created.filter((l) => l.status === "delivered").length;
-    return {
-      id: r.id,
-      name: r.name,
-      subtitle: `${r.role === "branch_manager" ? "Branch manager" : "Sales officer"} · ${
-        ds.branchById.get(r.branch_id)?.name ?? ""
-      }`,
-      units: delivered.length,
-      revenue: delivered.reduce((s, l) => s + l.deal_value, 0),
-      targetUnits: 0,
-      targetRevenue: 0,
-      unitAttainment: NaN,
-      leadsCreated: created.length,
-      conversion: created.length ? (won / created.length) * 100 : NaN,
-      openCount: open.length,
-      openValue: open.reduce((s, l) => s + l.deal_value, 0),
-      staleCount: open.filter((l) => idleDays(l, ds.asOf) >= 14).length,
-      medianResponseHours: median(created.map(responseHours).filter((h): h is number => h !== null)),
-      lostCount: lost.length,
-    };
-  });
+  return memo(ds, `reps:${range.from.getTime()}|${range.to.getTime()}|${branchId ?? ""}`, () =>
+    ds.sales_reps
+      .filter((r: SalesRep) => !branchId || r.branch_id === branchId)
+      .map((r) => {
+        const { created, delivered, lost, open } = scopeLeads(ds, { range, repId: r.id });
+        const won = created.filter((l) => l.status === "delivered").length;
+        return {
+          id: r.id,
+          name: r.name,
+          subtitle: `${r.role === "branch_manager" ? "Branch manager" : "Sales officer"} · ${
+            ds.branchById.get(r.branch_id)?.name ?? ""
+          }`,
+          units: delivered.length,
+          revenue: delivered.reduce((s, l) => s + l.deal_value, 0),
+          targetUnits: 0,
+          targetRevenue: 0,
+          unitAttainment: NaN,
+          leadsCreated: created.length,
+          conversion: created.length ? (won / created.length) * 100 : NaN,
+          openCount: open.length,
+          openValue: open.reduce((s, l) => s + l.deal_value, 0),
+          staleCount: countStale(ds, open),
+          medianResponseHours: medianResponse(ds, created),
+          lostCount: lost.length,
+        };
+      }),
+  );
 }
 
 /* ----------------------------------------------------------- breakdown views */
@@ -488,6 +584,10 @@ export interface Forecast {
  * weighted by each stage's historical win rate, for leads due to close this month.
  */
 export function forecastCurrentMonth(ds: Dataset, branchId?: string | null): Forecast {
+  return memo(ds, `forecast:${branchId ?? ""}`, () => forecastUncached(ds, branchId));
+}
+
+function forecastUncached(ds: Dataset, branchId?: string | null): Forecast {
   const month = ds.asOf.toISOString().slice(0, 7);
   const { end } = monthBounds(month);
   const probs = stageWinProbabilities(ds);

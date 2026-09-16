@@ -224,15 +224,15 @@ export default function DeliveryPage() {
         subtitle="Ordered by time from booking to handover — the customers most likely to leave a bad review."
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-[13px]">
+          <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
             <thead>
-              <tr className="border-y border-line bg-surface-2 text-left text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                <th className="px-4 py-2 font-semibold">Customer</th>
-                <th className="px-4 py-2 font-semibold">Model</th>
-                <th className="px-4 py-2 font-semibold">Branch</th>
-                <th className="px-4 py-2 font-semibold">Delivered</th>
-                <th className="px-4 py-2 font-semibold">Delay reason</th>
-                <th className="px-4 py-2 text-right font-semibold">Days</th>
+              <tr className="border-y border-line text-left">
+                <th className="th">Customer</th>
+                <th className="th">Model</th>
+                <th className="th">Branch</th>
+                <th className="th">Delivered</th>
+                <th className="th">Delay reason</th>
+                <th className="th text-right">Days</th>
               </tr>
             </thead>
             <tbody>

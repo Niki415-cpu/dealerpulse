@@ -15,7 +15,7 @@ export default function FunnelPage() {
   const model = useMemo(() => {
     if (!dataset || !range) return null;
     const { created, lost } = scopeLeads(dataset, { range, branchId });
-    const funnel = computeFunnel(created);
+    const funnel = computeFunnel(dataset, created);
     const delivered = created.filter((l) => l.status === "delivered");
     const avgDeal = delivered.length ? delivered.reduce((s, l) => s + l.deal_value, 0) / delivered.length : 0;
     return {
@@ -231,11 +231,11 @@ function BreakdownTable({
   const bestConversion = Math.max(...rows.map((r) => r.conversion), 0);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse text-[13px]">
+      <table className="w-full min-w-[520px] border-collapse text-[13.5px]">
         <thead>
-          <tr className="border-y border-line bg-surface-2 text-[11px] uppercase tracking-[0.05em] text-ink-3">
+          <tr className="border-y border-line">
             {headers.map((h, i) => (
-              <th key={h + i} className={`px-4 py-2 font-semibold ${i === 0 ? "text-left" : "text-right"}`}>
+              <th key={h + i} className={`th ${i === 0 ? "text-left" : "text-right"}`}>
                 {h}
               </th>
             ))}

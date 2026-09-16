@@ -48,7 +48,7 @@ export default function BranchPage() {
       groupMedian: median(branchPerformance(dataset, range).map((b) => b.conversion).filter(Number.isFinite)),
       actions: generateActions(dataset, scope).slice(0, 3),
       series: monthlySeries(dataset, scope),
-      funnel: computeFunnel(created),
+      funnel: computeFunnel(dataset, created),
       reps: repPerformance(dataset, range, branchId),
       sources: breakdownBy(created, (l) => l.source, (k) => SOURCE_LABEL[k] ?? k),
       lostReasons: breakdownBy(lost, (l) => l.lost_reason ?? "Not recorded", (k) => k),
@@ -108,7 +108,7 @@ export default function BranchPage() {
         </div>
       ) : null}
 
-      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-5">
+      <div className="stagger mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <KpiTile icon="revenue" label="Delivered revenue" value={formatINR(kpis.revenue)} sub={`${formatNumber(kpis.units)} units`} />
         <KpiTile
           icon="target"
@@ -176,10 +176,10 @@ export default function BranchPage() {
       <div className="mb-4">
         <TableCard title="Rep scoreboard" subtitle="Click any rep for their individual record.">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+            <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
               <thead>
-                <tr className="border-y border-line bg-surface-2 text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                  <th className="px-4 py-2 text-left font-semibold">Rep</th>
+                <tr className="border-y border-line">
+                  <th className="th text-left">Rep</th>
                   <SortHeader<EntityPerformance> label="Leads" sortKey="leadsCreated" active={sortKey === "leadsCreated"} dir={dir} onClick={toggle} align="right" />
                   <SortHeader<EntityPerformance> label="Units" sortKey="units" active={sortKey === "units"} dir={dir} onClick={toggle} align="right" />
                   <SortHeader<EntityPerformance> label="Revenue" sortKey="revenue" active={sortKey === "revenue"} dir={dir} onClick={toggle} align="right" />
@@ -191,7 +191,7 @@ export default function BranchPage() {
               <tbody>
                 {sorted.map((r) => (
                   <tr key={r.id} className="row-hover border-b border-line last:border-0">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <Link href={`/reps/${r.id}`} className="flex items-center gap-2.5">
                         <Avatar name={r.name} />
                         <span>
@@ -200,10 +200,10 @@ export default function BranchPage() {
                         </span>
                       </Link>
                     </td>
-                    <td className="tnum px-3 py-3 text-right text-ink-2">{formatNumber(r.leadsCreated)}</td>
-                    <td className="tnum px-3 py-3 text-right text-ink-2">{formatNumber(r.units)}</td>
-                    <td className="tnum px-3 py-3 text-right font-medium">{formatINR(r.revenue)}</td>
-                    <td className="px-3 py-3">
+                    <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatNumber(r.leadsCreated)}</td>
+                    <td className="tnum px-3 py-3.5 text-right text-ink-2">{formatNumber(r.units)}</td>
+                    <td className="tnum px-3 py-3.5 text-right font-medium">{formatINR(r.revenue)}</td>
+                    <td className="px-3 py-3.5">
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16">
                           <ProgressBar value={Number.isFinite(r.conversion) ? r.conversion * 2 : 0} tone={attainmentTone(r.conversion * 2)} />
@@ -211,8 +211,8 @@ export default function BranchPage() {
                         <span className="tnum w-12 text-right text-ink-2">{formatPct(r.conversion, 1)}</span>
                       </div>
                     </td>
-                    <td className="tnum px-3 py-3 text-right text-ink-2">{r.openCount}</td>
-                    <td className="px-3 py-3 text-right">
+                    <td className="tnum px-3 py-3.5 text-right text-ink-2">{r.openCount}</td>
+                    <td className="px-3 py-3.5 text-right">
                       {r.staleCount ? <Pill tone="warn">{r.staleCount}</Pill> : <Pill tone="good">0</Pill>}
                     </td>
                   </tr>

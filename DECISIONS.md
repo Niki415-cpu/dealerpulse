@@ -113,6 +113,24 @@ it, so drilling into Highway Toyota survives navigating from the overview to the
 two pages that *are* a single branch — the branch and rep pages — disable it rather than fighting it. A
 global search jumps straight to any branch, rep or customer.
 
+**Performance is a design decision here, not an afterthought.** Every metric is derived in the browser,
+so the cost of a page is real work on the main thread. Three things keep a route change under ~70ms
+(measured click-to-paint on the production build: 39-70ms across all six routes):
+
+- **The dataset is indexed once at load.** Every timestamp and stage set each aggregation needs is
+  resolved in a single pass over the 510 leads, so no metric ever parses a date or walks a status history
+  again. Before this, one overview render cost ~53,000 lead iterations with three `new Date()` calls each.
+- **Aggregations are memoised per (dataset, scope).** A single page asks for the same scope several times
+  over - the action rules alone want the rep leaderboard three times - and the second ask is now free.
+  The cache hangs off a `WeakMap` keyed by the dataset, so it cannot outlive the data it describes.
+- **Entrances are capped.** The staggered arrival is 24ms per item and 144ms in total; an animation that
+  outlasts the work it covers *is* lag, whatever the profiler says.
+
+**A data inconsistency worth naming.** 14 leads carry `status: "lost"` with no `lost` event in their
+status history. The lead's own status is treated as authoritative for *whether* it closed and the history
+for *when*; where the event is missing, last activity stands in. Dropping those leads instead - the easy
+option - would have quietly understated every loss figure in the product.
+
 **Scope I consciously cut.** No authentication (the brief says skip it). No dark mode — a committed
 single theme executed well beats two themes executed at 70%. No date-picker calendar; five presets
 cover the real questions and are one click instead of six. No map view; with five branches in four

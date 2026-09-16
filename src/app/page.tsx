@@ -35,11 +35,11 @@ export default function OverviewPage() {
       actions,
       brief: executiveBrief(dataset, scope, actions),
       series: monthlySeries(dataset, scope),
-      funnel: computeFunnel(scopeLeads(dataset, scope).created),
+      funnel: computeFunnel(dataset, scopeLeads(dataset, scope).created),
       // With a branch selected the scoreboard becomes that branch's reps.
-      rows: branchId
-        ? repPerformance(dataset, range, branchId).sort((a, b) => b.revenue - a.revenue)
-        : branchPerformance(dataset, range).sort((a, b) => b.revenue - a.revenue),
+      rows: [...(branchId ? repPerformance(dataset, range, branchId) : branchPerformance(dataset, range))].sort(
+        (a, b) => b.revenue - a.revenue,
+      ),
       forecast: forecastCurrentMonth(dataset, branchId),
     };
   }, [dataset, range, branchId]);
@@ -106,7 +106,7 @@ export default function OverviewPage() {
         ) : null}
 
         {/* Vital signs */}
-        <div className="stagger grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
           <KpiTile
             icon="revenue"
             label="Delivered revenue"
@@ -122,7 +122,6 @@ export default function OverviewPage() {
             value={kpis.units}
             format={(n) => formatNumber(Math.round(n))}
             sub={`of ${formatNumber(Math.round(kpis.targetUnits))} target`}
-            tone={kpis.unitAttainment < 50 ? "bad" : "neutral"}
             hint="Monthly branch targets, prorated to the selected range."
           />
           <KpiTile
@@ -131,7 +130,7 @@ export default function OverviewPage() {
             value={winRate}
             format={(n) => formatPct(n, 1)}
             delta={Number.isFinite(winDelta) ? { value: winDelta, suffix: "pp" } : undefined}
-            tone={winRate < 40 ? "bad" : "neutral"}
+            tone={winRate < 25 ? "bad" : "neutral"}
             sub={`${formatNumber(kpis.units + kpis.lostCount)} deals closed`}
             hint="Of the deals that reached a decision in this period, the share that ended in a delivery. Measured on closing date, so it is not distorted by how young the current lead cohort is."
           />
@@ -211,21 +210,21 @@ export default function OverviewPage() {
           }
         >
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+            <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
               <thead>
-                <tr className="border-y border-line bg-surface-2 text-left text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                  <th className="px-4 py-2 font-semibold">{branch ? "Rep" : "Branch"}</th>
-                  <th className="px-4 py-2 text-right font-semibold">Revenue</th>
-                  <th className="px-4 py-2 text-right font-semibold">Units</th>
-                  <th className="px-4 py-2 font-semibold">{branch ? "Leads handled" : "Target attainment"}</th>
-                  <th className="px-4 py-2 text-right font-semibold">Conversion</th>
-                  <th className="px-4 py-2 text-right font-semibold">Needs follow-up</th>
+                <tr className="border-y border-line text-left">
+                  <th className="th">{branch ? "Rep" : "Branch"}</th>
+                  <th className="th text-right">Revenue</th>
+                  <th className="th text-right">Units</th>
+                  <th className="th">{branch ? "Leads handled" : "Target attainment"}</th>
+                  <th className="th text-right">Conversion</th>
+                  <th className="th text-right">Needs follow-up</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((b) => (
                   <tr key={b.id} className="row-hover border-b border-line last:border-0">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <Link
                         href={branch ? `/reps/${b.id}` : `/branches/${b.id}`}
                         className="font-semibold text-ink hover:text-brand-dark"
@@ -234,9 +233,9 @@ export default function OverviewPage() {
                       </Link>
                       <p className="text-[11px] text-ink-3">{branch ? b.subtitle.split(" · ")[0] : b.subtitle}</p>
                     </td>
-                    <td className="tnum px-4 py-3 text-right font-medium">{formatINR(b.revenue)}</td>
-                    <td className="tnum px-4 py-3 text-right text-ink-2">{formatNumber(b.units)}</td>
-                    <td className="px-4 py-3">
+                    <td className="tnum px-4 py-3.5 text-right font-medium">{formatINR(b.revenue)}</td>
+                    <td className="tnum px-4 py-3.5 text-right text-ink-2">{formatNumber(b.units)}</td>
+                    <td className="px-4 py-3.5">
                       {branch ? (
                         <span className="tnum text-[12px] text-ink-2">{formatNumber(b.leadsCreated)}</span>
                       ) : (
@@ -248,12 +247,12 @@ export default function OverviewPage() {
                         </div>
                       )}
                     </td>
-                    <td className="tnum px-4 py-3 text-right">
+                    <td className="tnum px-4 py-3.5 text-right">
                       <span className={b.conversion < 10 ? "font-semibold text-[#a32626]" : "text-ink-2"}>
                         {formatPct(b.conversion, 1)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       {b.staleCount ? (
                         <Pill tone={b.staleCount > 3 ? "bad" : "warn"}>{b.staleCount} leads</Pill>
                       ) : (

@@ -50,14 +50,14 @@ function PipelineView() {
   const model = useMemo(() => {
     if (!dataset) return null;
     const scoped = dataset.leads.filter((l) => !branchId || l.branch_id === branchId);
-    const filtered = filterPipeline(scoped, filter, dataset.asOf)
+    const filtered = filterPipeline(dataset, scoped, filter)
       .filter((l) =>
         query
           ? `${l.customer_name} ${l.model_interested} ${l.id}`.toLowerCase().includes(query.toLowerCase())
           : true,
       )
       .sort((a, b) => idleDays(b, dataset.asOf) - idleDays(a, dataset.asOf));
-    const allOpen = filterPipeline(scoped, "all", dataset.asOf);
+    const allOpen = filterPipeline(dataset, scoped, "all");
     const probs = stageWinProbabilities(dataset);
     return {
       filtered,
@@ -66,7 +66,7 @@ function PipelineView() {
       weighted: allOpen.reduce((s, l) => s + l.deal_value * (probs.get(l.status) ?? 0), 0),
       probs,
       counts: Object.fromEntries(
-        PIPELINE_FILTERS.map((f) => [f.key, filterPipeline(scoped, f.key, dataset.asOf).length]),
+        PIPELINE_FILTERS.map((f) => [f.key, filterPipeline(dataset, scoped, f.key).length]),
       ) as Record<PipelineFilter, number>,
     };
   }, [dataset, filter, branchId, query]);
@@ -135,17 +135,17 @@ function PipelineView() {
           subtitle="How long each open deal has been sitting without activity. Anything to the right of the line is at risk."
         />
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] border-collapse text-[13px]">
+          <table className="w-full min-w-[620px] border-collapse text-[13.5px]">
             <thead>
-              <tr className="border-b border-line text-[11px] uppercase tracking-[0.05em] text-ink-3">
-                <th className="py-2 pr-3 text-left font-semibold">Idle</th>
+              <tr className="border-b border-line">
+                <th className="th !bg-transparent !pl-0">Idle</th>
                 {OPEN_STAGES.map((s) => (
-                  <th key={s} className="px-2 py-2 text-center font-semibold">
+                  <th key={s} className="th !px-2 text-center">
                     {STATUS_LABEL[s]}
                   </th>
                 ))}
-                <th className="px-2 py-2 text-right font-semibold">Deals</th>
-                <th className="px-2 py-2 text-right font-semibold">Value</th>
+                <th className="th !px-2 text-right">Deals</th>
+                <th className="th !px-2 text-right">Value</th>
               </tr>
             </thead>
             <tbody>
