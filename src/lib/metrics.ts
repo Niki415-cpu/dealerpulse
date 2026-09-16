@@ -161,6 +161,18 @@ export interface Kpis {
   medianResponseHours: number;
   avgDaysToDeliver: number;
   staleCount: number;
+  /** Share of the creation cohort that has actually closed (delivered or lost). */
+  cohortMaturity: number;
+}
+
+/**
+ * A lead created yesterday cannot have been delivered yet — the median journey is
+ * weeks long. Short windows therefore understate conversion, so every view that
+ * reports cohort conversion also reports how settled the cohort is.
+ */
+export function cohortMaturity(created: Lead[]): number {
+  if (!created.length) return 1;
+  return created.filter((l) => !isOpen(l)).length / created.length;
 }
 
 export function computeKpis(ds: Dataset, scope: Scope, probs?: Map<LeadStatus, number>): Kpis {
@@ -191,6 +203,7 @@ export function computeKpis(ds: Dataset, scope: Scope, probs?: Map<LeadStatus, n
     medianResponseHours: median(created.map(responseHours).filter((h): h is number => h !== null)),
     avgDaysToDeliver: deliverDays.length ? deliverDays.reduce((a, b) => a + b, 0) / deliverDays.length : NaN,
     staleCount: open.filter((l) => idleDays(l, ds.asOf) >= 14).length,
+    cohortMaturity: cohortMaturity(created),
   };
 }
 

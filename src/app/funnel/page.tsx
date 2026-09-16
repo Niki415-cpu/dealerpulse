@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { ExportButton, FunnelView, LoadingGrid, PageHeader, TableCard } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
-import { Card, CardHeader, ErrorState, KpiTile, Pill } from "@/components/ui";
+import { Card, CardHeader, ErrorState, KpiTile, Pill, SeverityIcon } from "@/components/ui";
 import { formatINR, formatNumber, formatPct, SOURCE_LABEL, STATUS_LABEL } from "@/lib/format";
-import { breakdownBy, computeFunnel, FUNNEL_STAGES, scopeLeads } from "@/lib/metrics";
+import { breakdownBy, cohortMaturity, computeFunnel, FUNNEL_STAGES, scopeLeads } from "@/lib/metrics";
 
 export default function FunnelPage() {
   const { dataset, range, status, error, retry } = useDashboard();
@@ -23,6 +23,7 @@ export default function FunnelPage() {
       created,
       funnel,
       avgDeal,
+      maturity: cohortMaturity(created),
       sources: breakdownBy(created, (l) => l.source, (k) => SOURCE_LABEL[k] ?? k),
       models: breakdownBy(created, (l) => l.model_interested, (k) => k),
       lostReasons: breakdownBy(lost, (l) => l.lost_reason ?? "Not recorded", (k) => k),
@@ -38,7 +39,7 @@ export default function FunnelPage() {
       </>
     );
 
-  const { created, funnel, avgDeal, sources, models, lostReasons } = model;
+  const { created, funnel, avgDeal, maturity, sources, models, lostReasons } = model;
 
   /* What-if: lift one step's conversion and let the rest of the funnel follow. */
   const baseline = funnel[funnel.length - 1].count;
@@ -91,6 +92,17 @@ export default function FunnelPage() {
           </div>
         }
       />
+
+      {maturity < 0.8 ? (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-[#f7e3b8] bg-[#fffaf0] px-4 py-3">
+          <SeverityIcon severity="warning" className="mt-0.5 !h-4 !w-4 text-[#8a5a00]" />
+          <p className="text-[12px] leading-relaxed text-ink-2">
+            <span className="font-semibold text-ink">Young cohort. </span>
+            {formatPct((1 - maturity) * 100)} of these leads are still moving through the funnel, so the lower stages
+            will keep filling in. Widen the range to 90D or ALL for a settled picture.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiTile label="Leads in cohort" value={formatNumber(created.length)} sub={range.label} />

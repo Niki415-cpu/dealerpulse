@@ -342,10 +342,14 @@ export function executiveBrief(ds: Dataset, scope: Scope, actions: Action[]): st
     .reduce((worst, s) => (s.stepConversion < worst.stepConversion ? s : worst), funnel[1]);
   const lines: string[] = [];
 
+  const period =
+    scope.range.key === "all"
+      ? "Across the full Jun-Dec 2025 record"
+      : `In the ${scope.range.label.toLowerCase()}`;
   lines.push(
-    `In ${scope.range.label.toLowerCase()}, the group delivered ${delivered.length} vehicles worth ${formatINR(
+    `${period}, the group delivered ${pluralise(delivered.length, "vehicle")} worth ${formatINR(
       revenue,
-    )} from ${created.length} new enquiries.`,
+    )} from ${pluralise(created.length, "new enquiry", "new enquiries")}.`,
   );
 
   const biggestLeak = funnel.slice(0, -1).reduce((a, b) => (a.lostValue > b.lostValue ? a : b));
@@ -359,7 +363,11 @@ export function executiveBrief(ds: Dataset, scope: Scope, actions: Action[]): st
 
   const critical = actions.filter((a) => a.severity === "critical");
   if (critical.length) {
-    lines.push(`${critical.length} issues need a decision this week. The largest: ${critical[0].title.toLowerCase()}.`);
+    lines.push(
+      `${pluralise(critical.length, "issue")} ${
+        critical.length === 1 ? "needs" : "need"
+      } a decision this week. The largest: ${critical[0].title.toLowerCase()}.`,
+    );
   } else {
     lines.push("Nothing in the pipeline is currently past its follow-up SLA.");
   }

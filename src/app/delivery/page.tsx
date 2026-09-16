@@ -128,7 +128,7 @@ export default function DeliveryPage() {
         <Card>
           <CardHeader
             title="How long deliveries take"
-            subtitle={`Red bars are past the ${SLA_DAYS}-day SLA. Most deliveries land inside three weeks — the tail is where the complaints come from.`}
+            subtitle={`${formatPct(onTimeRate)} of deliveries land inside the ${SLA_DAYS}-day SLA. The red tail on the right is where the complaints come from.`}
           />
           <HistogramChart data={bins} unitLabel="days" />
         </Card>

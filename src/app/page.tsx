@@ -6,7 +6,7 @@ import { BriefCard, ExportButton, FunnelView, LoadingGrid, PageHeader, TableCard
 import { ActionCard } from "@/components/blocks";
 import { useDashboard } from "@/components/DashboardProvider";
 import { LeadFlowChart, RevenueVsTargetChart } from "@/components/charts";
-import { attainmentTone, Card, CardHeader, ErrorState, KpiTile, ProgressBar, Pill } from "@/components/ui";
+import { attainmentTone, Card, CardHeader, ErrorState, KpiTile, Pill, ProgressBar, SeverityIcon } from "@/components/ui";
 import { formatINR, formatMonth, formatNumber, formatPct } from "@/lib/format";
 import { executiveBrief, generateActions } from "@/lib/insights";
 import {
@@ -51,8 +51,12 @@ export default function OverviewPage() {
 
   const { kpis, prev, actions, brief, series, funnel, branches, forecast } = model;
   const revenueDelta = prev.revenue ? ((kpis.revenue - prev.revenue) / prev.revenue) * 100 : NaN;
-  const leadDelta = prev.leadsCreated ? ((kpis.leadsCreated - prev.leadsCreated) / prev.leadsCreated) * 100 : NaN;
+  const closed = kpis.units + kpis.lostCount;
+  const prevClosed = prev.units + prev.lostCount;
+  const winRate = closed ? (kpis.units / closed) * 100 : NaN;
+  const winDelta = prevClosed ? winRate - (prev.units / prevClosed) * 100 : NaN;
   const criticalCount = actions.filter((a) => a.severity === "critical").length;
+  const settled = kpis.cohortMaturity >= 0.8;
 
   return (
     <>
@@ -81,6 +85,19 @@ export default function OverviewPage() {
       <div className="flex flex-col gap-4">
         <BriefCard lines={brief} />
 
+        {!settled ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-[#f7e3b8] bg-[#fffaf0] px-4 py-3">
+            <SeverityIcon severity="warning" className="mt-0.5 !h-4 !w-4 text-[#8a5a00]" />
+            <p className="text-[12px] leading-relaxed text-ink-2">
+              <span className="font-semibold text-ink">Young cohort. </span>
+              {formatPct((1 - kpis.cohortMaturity) * 100)} of the leads created in this window are still open — a
+              lead takes weeks to reach delivery, so conversion and funnel figures here will settle upward. Delivered
+              revenue and units are unaffected. Use <span className="font-semibold">90D</span> or{" "}
+              <span className="font-semibold">ALL</span> to judge conversion.
+            </p>
+          </div>
+        ) : null}
+
         {/* Vital signs */}
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
           <KpiTile
@@ -98,11 +115,12 @@ export default function OverviewPage() {
             hint="Monthly branch targets, prorated to the selected range."
           />
           <KpiTile
-            label="Lead → delivery"
-            value={formatPct(kpis.cohortConversion, 1)}
-            delta={Number.isFinite(leadDelta) ? { value: leadDelta, suffix: "%" } : undefined}
-            sub={`${formatNumber(kpis.leadsCreated)} enquiries`}
-            hint="Of the leads created in this range, the share that has been delivered."
+            label="Win rate"
+            value={formatPct(winRate, 1)}
+            delta={Number.isFinite(winDelta) ? { value: winDelta, suffix: "pp" } : undefined}
+            tone={winRate < 40 ? "bad" : "neutral"}
+            sub={`${formatNumber(kpis.units + kpis.lostCount)} deals closed`}
+            hint="Of the deals that reached a decision in this period, the share that ended in a delivery. Measured on closing date, so it is not distorted by how young the current lead cohort is."
           />
           <KpiTile
             label="Open pipeline"
